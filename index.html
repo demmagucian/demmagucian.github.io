@@ -64,7 +64,7 @@ const CONFIG = {
   // Your images. Leave empty to run with generated demo images.
   // Example: { src: "images/001.jpg", url: "https://marketplace.example/item/1" }
   images: [],
-  title: "Demma Guciàn",        // artwork title shown at the bottom center; #001, #002... follows automatically
+  title: "Study for Self-Portrait with Tortoiseshell Glasses and Hawaiian Shirt, 2026",        // artwork title shown at the bottom center; #001, #002... follows automatically
   transitionMs: 4000,   // time for one full dissolve from one image to the next
   holdMs: 0,            // pause on each image between dissolves (0 = continuous)
   order: "sequence",    // "sequence" or "shuffle"
@@ -86,7 +86,7 @@ const cache = new Map();
 /* Caption: fixed title + number of the image on screen, crossfading with the images */
 const capTitle = document.getElementById('capTitle'), nA = document.getElementById('nA'), nB = document.getElementById('nB');
 capTitle.textContent = CONFIG.title;
-const label = i => '#' + String(i + 1).padStart(3, '0');
+const label = i => '(#' + String(i + 1).padStart(3, '0') + ')';
 const setCaption = p => { nA.style.opacity = 1 - p; nB.style.opacity = p; };
 const showCaption = i => { nA.textContent = label(i); nB.textContent = ''; setCaption(0); };
 
