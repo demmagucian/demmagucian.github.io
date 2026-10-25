@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SADE</title>
+<style>
+  :root { color-scheme: dark; --ink: #f2f2f0; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #000; color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  .stage { position: fixed; inset: 0; background: #000; }
+  canvas { display: block; width: 100%; height: 100%; background: #000; }
+
+  .menu-btn { position: fixed; z-index: 3;
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    right: calc(env(safe-area-inset-right, 0px) + 14px);
+    width: 48px; height: 48px; border: 0; background: transparent; cursor: pointer;
+    mix-blend-mode: difference; color: #fff; }
+  .menu-btn { transition: transform .3s ease; }
+  .menu-btn span { position: absolute; background: currentColor; }
+  .menu-btn span:nth-child(1) { left: 12px; right: 12px; top: 23px; height: 2px; }
+  .menu-btn span:nth-child(2) { top: 12px; bottom: 12px; left: 23px; width: 2px; }
+  .menu-btn[aria-expanded="true"] { transform: rotate(45deg); }
+  .menu-btn:focus-visible, nav a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  .caption { position: fixed; z-index: 1; left: 0; right: 0; text-align: center;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); pointer-events: none;
+    color: #fff; mix-blend-mode: difference; white-space: nowrap;
+    font-size: clamp(.85rem, .7rem + .5vw, 1.1rem); letter-spacing: .08em;
+    font-variant-numeric: tabular-nums; }
+  .cap-num { display: inline-grid; margin-left: .55em; }
+  .cap-num span { grid-area: 1 / 1; }
+  nav { position: fixed; z-index: 2; top: 0; right: 0; bottom: 0;
+    width: min(320px, 85vw); padding: 96px 32px 32px;
+    background: rgba(0,0,0,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    transform: translateX(100%); visibility: hidden;
+    transition: transform .35s ease, visibility 0s .35s; }
+  nav.open { transform: none; visibility: visible; transition: transform .35s ease; }
+  nav a { display: block; padding: 14px 0; color: var(--ink); text-decoration: none;
+    font-size: 1.6rem; border-bottom: 1px solid rgba(255,255,255,.18); }
+  nav a:hover { opacity: .65; }
+  @media (prefers-reduced-motion: reduce) { nav, .menu-btn { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="stage"><canvas id="c"></canvas></div>
+<div class="caption"><span id="capTitle"></span><span class="cap-num"><span id="nA"></span><span id="nB"></span></span></div>
+
+<button class="menu-btn" id="btn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+  <span></span><span></span>
+</button>
+<nav id="menu" aria-label="Main">
+  <a href="https://YOUR-NFT-MARKETPLACE-LINK" target="_blank" rel="noopener">Work</a>
+  <a href="writing.html">Writing</a>
+  <a href="about.html">About</a>
+  <a href="mailto:you@example.com">Contact</a>
+</nav>
+
+<script>
+/* ===== SETTINGS: edit this block only. Same values on every loop. ===== */
+const CONFIG = {
+  // Your images. Leave empty to run with generated demo images.
+  // Example: { src: "images/001.jpg", url: "https://marketplace.example/item/1" }
+  images: [],
+  title: "SADE",        // artwork title shown at the bottom center; #001, #002... follows automatically
+  transitionMs: 4000,   // time for one full dissolve from one image to the next
+  holdMs: 0,            // pause on each image between dissolves (0 = continuous)
+  order: "sequence",    // "sequence" or "shuffle"
+  style: "crossfade",   // "crossfade" = smooth blend; "grain" = random pixel dissolve, same everywhere
+  ease: true,           // soft start and soft end of each transition
+  grainSize: 1,         // grain style only: 1 = every pixel dissolves on its own
+  focus: [0.5, 0.5]     // part of each image that stays in view when the window crops it (0-1, [0.5, 0.5] = center)
+};
+/* ===================================================================== */
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const layer = document.createElement('canvas'), lctx = layer.getContext('2d');
+const small = document.createElement('canvas'), sctx = small.getContext('2d');
+const N = CONFIG.images.length || 6;
+let W, H, G, gw, gh, keys, order, done = 0, maskData;
+let imgA, imgB, A, B, idxA = -1, idxB = -1, phase = 'loading', t0 = 0, prog = 0, queue = [];
+const cache = new Map();
+
+/* Caption: fixed title + number of the image on screen, crossfading with the images */
+const capTitle = document.getElementById('capTitle'), nA = document.getElementById('nA'), nB = document.getElementById('nB');
+capTitle.textContent = CONFIG.title;
+const label = i => '#' + String(i + 1).padStart(3, '0');
+const setCaption = p => { nA.style.opacity = 1 - p; nB.style.opacity = p; };
+const showCaption = i => { nA.textContent = label(i); nB.textContent = ''; setCaption(0); };
+
+/* One fixed key per grain: low keys dissolve first. Built once, so every loop is identical. */
+function buildKeys() {
+  G = Math.max(1, CONFIG.grainSize);
+  gw = Math.ceil(W / G); gh = Math.ceil(H / G);
+  const n = gw * gh;
+  keys = new Uint16Array(n);
+  for (let i = 0; i < n; i++) keys[i] = Math.floor(Math.random() * 65536);  // same chance everywhere
+  // Sort grains by key (counting sort) so each frame only touches the grains that just changed
+  const count = new Uint32Array(65537);
+  for (let i = 0; i < n; i++) count[keys[i] + 1]++;
+  for (let i = 0; i < 65536; i++) count[i + 1] += count[i];
+  order = new Uint32Array(n);
+  for (let i = 0; i < n; i++) order[count[keys[i]]++] = i;
+  small.width = gw; small.height = gh;
+  maskData = sctx.createImageData(gw, gh);
+  maskData.data.fill(255);
+  resetMask();
+}
+
+function resetMask() {
+  const px = maskData.data;
+  for (let j = 3; j < px.length; j += 4) px[j] = 0;
+  done = 0;
+}
+
+function size() {
+  const cw = cv.clientWidth, ch = cv.clientHeight;
+  // Native device resolution, reduced only if the window would exceed a safe pixel count
+  const maxPx = CONFIG.style === 'grain' ? 8e6 : 12e6;
+  const d = Math.min(window.devicePixelRatio || 1, Math.sqrt(maxPx / (cw * ch)));
+  W = cv.width = Math.round(cw * d);
+  H = cv.height = Math.round(ch * d);
+  if (CONFIG.style === 'grain') { layer.width = W; layer.height = H; buildKeys(); }
+}
+
+function fit(img) {  // draw an image to fill the canvas (cover), centered
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s;
+  c.getContext('2d').drawImage(img, (W - w) * CONFIG.focus[0], (H - h) * CONFIG.focus[1], w, h);
+  return c;
+}
+
+function demo() {
+  const c = document.createElement('canvas'); c.width = 540; c.height = 960;
+  const x = c.getContext('2d'), r = (a, b) => a + Math.random() * (b - a);
+  const g = x.createLinearGradient(0, 0, r(0, 540), 960);
+  for (let k = 0; k < 3; k++) g.addColorStop(k / 2, `hsl(${r(0,360)|0},${r(40,90)|0}%,${r(15,65)|0}%)`);
+  x.fillStyle = g; x.fillRect(0, 0, 540, 960);
+  for (let k = 0; k < 6; k++) { x.fillStyle = `hsla(${r(0,360)|0},70%,55%,.5)`;
+    x.beginPath(); x.arc(r(0,540), r(0,960), r(40,200), 0, 7); x.fill(); }
+  return c;
+}
+
+function getImage(i) {
+  if (cache.has(i)) return cache.get(i);
+  const p = CONFIG.images.length
+    ? new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(demo()); im.src = CONFIG.images[i].src; })
+    : Promise.resolve(demo());
+  cache.set(i, p);
+  if (cache.size > 4) cache.delete(cache.keys().next().value);
+  return p;
+}
+
+function nextIndex() {
+  if (CONFIG.order === 'shuffle') {
+    if (!queue.length) { queue = [...Array(N).keys()].sort(() => Math.random() - .5);
+      if (N > 1 && queue[queue.length - 1] === idxB) queue.reverse(); }
+    return queue.pop();
+  }
+  return (idxB + 1) % N;
+}
+
+function draw(p) {  // p: 0 = image A, 1 = image B
+  setCaption(p);
+  ctx.drawImage(A, 0, 0);
+  if (p <= 0) return;
+  if (p >= 1) { ctx.drawImage(B, 0, 0); return; }
+  if (CONFIG.style !== 'grain') { ctx.globalAlpha = p; ctx.drawImage(B, 0, 0); ctx.globalAlpha = 1; return; }
+  const th = p * 65535, px = maskData.data;
+  while (done < order.length && keys[order[done]] < th) { px[order[done] * 4 + 3] = 255; done++; }
+  sctx.putImageData(maskData, 0, 0);
+  lctx.globalCompositeOperation = 'source-over'; lctx.clearRect(0, 0, W, H); lctx.drawImage(B, 0, 0);
+  lctx.globalCompositeOperation = 'destination-in'; lctx.imageSmoothingEnabled = false;
+  lctx.drawImage(small, 0, 0, W, H);
+  ctx.drawImage(layer, 0, 0);
+}
+
+async function advance() {
+  idxB = nextIndex(); imgB = await getImage(idxB); B = fit(imgB);
+  if (CONFIG.style === 'grain') resetMask();
+  nA.textContent = label(idxA); nB.textContent = label(idxB);
+  phase = 'dissolve'; t0 = performance.now();
+}
+
+function frame(now) {
+  if (phase === 'dissolve') {
+    prog = (now - t0) / CONFIG.transitionMs;
+    if (prog >= 1) { draw(1); imgA = imgB; A = B; idxA = idxB; showCaption(idxA); prog = 0; phase = 'hold'; t0 = now; }
+    else draw(CONFIG.ease ? prog * prog * (3 - 2 * prog) : prog);
+  } else if (phase === 'hold' && now - t0 >= CONFIG.holdMs) { phase = 'loading'; advance(); }
+  requestAnimationFrame(frame);
+}
+
+async function start() {
+  size();
+  idxB = -1; idxA = nextIndex(); idxB = idxA;
+  imgA = await getImage(idxA); A = fit(imgA); ctx.drawImage(A, 0, 0); showCaption(idxA);
+  phase = 'hold'; t0 = performance.now();
+  requestAnimationFrame(frame);
+}
+
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => {
+  if (!imgA) return; size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
+  if (phase !== 'dissolve') ctx.drawImage(A, 0, 0); }, 60); });
+
+cv.addEventListener('click', () => {
+  const it = CONFIG.images[prog < .5 ? idxA : idxB];
+  if (it && it.url) window.open(it.url, '_blank', 'noopener');
+});
+if (CONFIG.images.some(i => i.url)) cv.style.cursor = 'pointer';
+
+start();
+
+const btn = document.getElementById('btn'), menu = document.getElementById('menu');
+const setOpen = o => { menu.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); };
+btn.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+menu.addEventListener('click', e => { if (e.target.tagName === 'A') setOpen(false); });
+</script>
+</body>
+</html>
