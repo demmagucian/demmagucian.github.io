@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Demma Guciàn</title>
+<style>
+  :root { color-scheme: light; --ink: #111; --a: .75;
+    --m: clamp(16px, 4vw, 56px); --gap: clamp(6px, 1vw, 14px);
+    --top: calc(env(safe-area-inset-top, 0px) + 68px); }
+  * { box-sizing: border-box; margin: 0; }
+  [hidden] { display: none !important; }
+  html, body { background: #fff; color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  body.fit, body.lb-open { overflow: hidden; }
+
+  /* Grid */
+  main { padding: var(--top) max(var(--m), env(safe-area-inset-right, 0px))
+    calc(var(--m) + env(safe-area-inset-bottom, 0px)) max(var(--m), env(safe-area-inset-left, 0px)); }
+  main.fit { height: 100dvh; overflow: hidden; display: grid; place-content: center; }
+  main.fit .grid { width: 100%; }
+  .grid { display: grid; gap: var(--gap); }
+  .cell { display: block; width: 100%; padding: 0; border: 0; background: #eee; cursor: pointer;
+    aspect-ratio: var(--a); overflow: hidden; box-shadow: 0 3px 12px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08); }
+  .cell img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .cell:hover { opacity: .88; }
+  .cell.empty { background: #f4f4f4; box-shadow: none; cursor: default; }
+  .cell.empty:hover { opacity: 1; }
+  .cell.empty img { visibility: hidden; }
+  .cell:focus-visible, .lb button:focus-visible, .buy:focus-visible,
+  .menu-btn:focus-visible, nav a:focus-visible, nav .drop:focus-visible,
+  .sublist button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  /* Large view: the grid stays visible behind it */
+  .lb { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center;
+    background: rgba(190,190,190,.8); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    padding: calc(env(safe-area-inset-top, 0px) + 56px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  .lb figure { display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: fit-content; max-width: 100%; }
+  .lb img { display: block; width: auto; height: auto; background: #eee;
+    max-width: calc(100vw - 32px); max-height: calc(100dvh - 215px);
+    box-shadow: 0 12px 40px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08); }
+  .lb figcaption { display: grid; gap: 6px; justify-items: start; text-align: left; width: 0; min-width: 100%; }
+  .lb-title { font-size: 1rem; line-height: 1.35; letter-spacing: .02em; }
+  .lb-info { font-size: .85rem; line-height: 1.4; opacity: .65; }
+  .buy { margin-top: 6px; display: inline-block; padding: 11px 28px; border: 1px solid var(--ink);
+    color: var(--ink); text-decoration: none; font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; }
+  .buy:hover { background: var(--ink); color: #fff; }
+  .buy:not([href]) { opacity: .35; pointer-events: none; }
+  .lb-x, .lb-prev, .lb-next { position: absolute; width: 44px; height: 44px; border: 0; border-radius: 50%;
+    background: rgba(255,255,255,.85); color: var(--ink); font-size: 1.6rem; line-height: 1; cursor: pointer;
+    box-shadow: 0 1px 6px rgba(0,0,0,.18); }
+  .lb-x { top: calc(env(safe-area-inset-top, 0px) + 10px); left: 12px; }
+  .lb-prev, .lb-next { top: 50%; transform: translateY(-50%); }
+  .lb-prev { left: 10px; } .lb-next { right: 10px; }
+
+  /* Menu: same identity as before */
+  .menu-btn { position: fixed; z-index: 6; width: 48px; height: 48px; border: 0; background: transparent;
+    top: calc(env(safe-area-inset-top, 0px) + 14px); right: calc(env(safe-area-inset-right, 0px) + 14px);
+    cursor: pointer; mix-blend-mode: difference; color: #fff; transition: transform .3s ease; }
+  .menu-btn span { position: absolute; background: currentColor; }
+  .menu-btn span:nth-child(1) { left: 12px; right: 12px; top: 23px; height: 2px; }
+  .menu-btn span:nth-child(2) { top: 12px; bottom: 12px; left: 23px; width: 2px; }
+  .menu-btn[aria-expanded="true"] { transform: rotate(45deg); }
+  nav { position: fixed; z-index: 5; top: 0; right: 0; bottom: 0; width: min(320px, 85vw); padding: 96px 32px 32px;
+    background: rgba(255,255,255,.9); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    transform: translateX(100%); visibility: hidden; transition: transform .35s ease, visibility 0s .35s; }
+  nav.open { transform: none; visibility: visible; transition: transform .35s ease; }
+  nav a { display: block; padding: 14px 0; color: var(--ink); text-decoration: none; font-size: 1.6rem;
+    border-bottom: 1px solid rgba(0,0,0,.14); }
+  nav a:hover { opacity: .65; }
+  nav .drop { display: flex; width: 100%; justify-content: space-between; align-items: center;
+    padding: 14px 0; background: none; border: 0; border-bottom: 1px solid rgba(0,0,0,.14);
+    color: var(--ink); font: inherit; font-size: 1.6rem; text-align: left; cursor: pointer; }
+  nav .drop:hover { opacity: .65; }
+  .sublist { list-style: none; padding: 0; overflow: hidden; max-height: 0; visibility: hidden;
+    transition: max-height .35s ease, visibility 0s .35s; }
+  .sublist.open { max-height: 60dvh; overflow-y: auto; visibility: visible; transition: max-height .35s ease; }
+  .sublist button { display: block; width: 100%; padding: 12px 0 12px 16px; background: none; border: 0;
+    color: var(--ink); font: inherit; font-size: 1.05rem; line-height: 1.35; text-align: left; cursor: pointer; opacity: .65; }
+  .sublist button:hover, .sublist button[aria-current="true"] { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { nav, .menu-btn, .sublist { transition: none; } }
+</style>
+</head>
+<body>
+
+<main id="main"><div class="grid" id="grid"></div></main>
+
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Image">
+  <button class="lb-x" id="lbX" aria-label="Close">&times;</button>
+  <button class="lb-prev" id="lbPrev" aria-label="Previous">&lsaquo;</button>
+  <figure>
+    <img id="lbImg" alt="">
+    <figcaption>
+      <div class="lb-title" id="lbTitle"></div>
+      <div class="lb-info" id="lbInfo"></div>
+      <a class="buy" id="lbBuy" target="_blank" rel="noopener"></a>
+    </figcaption>
+  </figure>
+  <button class="lb-next" id="lbNext" aria-label="Next">&rsaquo;</button>
+</div>
+
+<button class="menu-btn" id="btn" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+  <span></span><span></span>
+</button>
+<nav id="menu" aria-label="Main">
+  <button class="drop" id="portraitsBtn" aria-expanded="false" aria-controls="portraitList">Portraits <span aria-hidden="true">+</span></button>
+  <ul class="sublist" id="portraitList"></ul>
+  <a href="writing.html">Writing</a>
+  <a href="about.html">About</a>
+  <a href="mailto:you@example.com">Contact</a>
+</nav>
+
+<script>
+/* ===== SETTINGS: edit this block only ===== */
+const CONFIG = {
+  imageBase: "",              // where your image folders live. "" = same site. With R2: "https://images.yourdomain.com/" (keep the final slash)
+  sizes: [],                  // [] = one size, files directly in the folder (images/001.jpg, 002.jpg ...).
+                              // Later: [600, 1600, 3200] with one subfolder per size (600 for the grid, larger for the big view)
+  aspect: 3 / 4,              // width / height of your images (adjusts itself to the first image it loads)
+  steps: [[0, 2], [600, 4], [900, 5], [1100, 10], [1400, 20], [2000, 25]],
+                              // [window width in px, columns]: the columns step up as the window gets wider, and down as it narrows.
+                              // If all images fit on one screen they are centered with no scrolling, otherwise the page scrolls.
+  regular: true,              // true = always a complete rectangle: columns are adjusted to divide the image count evenly
+                              // (100 images: 1, 2, 4, 5, 10, 20, 25, 50 or 100 columns). false = best fit, last row may be short
+  buy: "Buy on Verse",        // label of the button in the big view
+  portraits: [
+    { title: "Study for Self-Portrait with Tortoiseshell Glasses and Hawaiian Shirt, 2026",
+      info: "",               // line under the title in the big view, e.g. "Digital painting, 2026" (optional)
+      folder: "images/portrait-1",   // this portrait's folder on GitHub, holding 001.jpg, 002.jpg ... (lowercase .jpg). Must match the real folder name exactly
+      count: 100,             // final number of images. Files not uploaded yet show as faint empty boxes, and fill in by themselves once uploaded
+      url: "" }               // Verse link per image for the button; {n} becomes 1, 2 ... e.g. "https://example.com/token/{n}"
+  ]
+};
+/* ========================================== */
+
+/* Builds each portrait's image list: folder/size/001.jpg ... */
+CONFIG.portraits.forEach(p => {
+  if (p.images) return;                              // a hand-written list wins
+  p.images = Array.from({ length: p.count || 100 }, (_, i) => ({
+    dir: CONFIG.imageBase + p.folder, file: `${String(i + 1).padStart(3, '0')}.jpg`,
+    url: p.url ? p.url.replace('{n}', i + 1) : undefined }));
+});
+
+const $ = id => document.getElementById(id);
+const main = $('main'), grid = $('grid'), lb = $('lb'), lbImg = $('lbImg'), lbBuy = $('lbBuy');
+let cur = 0, cells = [], aspect = CONFIG.aspect, openIdx = -1, lbToken = 0;
+const P = () => CONFIG.portraits[cur];
+const imgs = () => P().images;
+const label = i => '(#' + String(i + 1).padStart(3, '0') + ')';
+const DEBUG = /[?&]debug/.test(location.search);
+const dpr = () => Math.min(window.devicePixelRatio || 1, 3);
+document.documentElement.style.setProperty('--a', aspect);
+
+/* ----- Image sizes: pick the smallest one that is sharp enough, fall back to others ----- */
+const sizesAsc = [...CONFIG.sizes].sort((x, y) => x - y);
+function pickOrder(need) {
+  if (!sizesAsc.length) return [null];
+  if (navigator.connection && navigator.connection.saveData) need *= .6;
+  let k = sizesAsc.findIndex(s => s >= need * .8);
+  if (k < 0) k = sizesAsc.length - 1;
+  return [...sizesAsc.slice(k), ...sizesAsc.slice(0, k).reverse()];
+}
+const srcFor = (item, size) => item.src || (size ? `${item.dir}/${size}/${item.file}` : `${item.dir}/${item.file}`);
+function load(img, item, tries, n = 0) {
+  img.dataset.size = tries[0];
+  if (n >= tries.length) { img.removeAttribute('src'); const p = img.parentElement; p.classList.add('empty'); p.disabled = true;
+    if (DEBUG && !p.querySelector('span')) { const s = document.createElement('span'); s.textContent = srcFor(item, tries[0]);
+      s.style.cssText = 'position:absolute;inset:0;padding:3px;overflow:hidden;font:9px/1.2 monospace;word-break:break-all;text-align:left;color:#555';
+      p.style.position = 'relative'; p.appendChild(s); }
+    return; }
+  img.onerror = () => load(img, item, tries, n + 1);
+  img.src = srcFor(item, tries[n]);
+}
+function loadFirst(item, tries) {
+  return new Promise(resolve => {
+    let n = 0;
+    const next = () => {
+      if (n >= tries.length) return resolve(null);
+      const im = new Image(); im.onload = () => resolve(im); im.onerror = next; im.src = srcFor(item, tries[n++]);
+    };
+    next();
+  });
+}
+
+/* ----- Grid ----- */
+function render() {
+  grid.textContent = ''; cells = [];
+  imgs().forEach((item, i) => {
+    const b = document.createElement('button'); b.className = 'cell';
+    b.setAttribute('aria-label', `${P().title} ${label(i)}`);
+    const im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.decoding = 'async'; im.draggable = false;
+    im.addEventListener('load', () => { b.classList.remove('empty'); b.disabled = false; });
+    if (i === 0) im.onload = () => {                  // match the grid to the real proportions of the images
+      const a = im.naturalWidth / im.naturalHeight;
+      if (a && Math.abs(a - aspect) > .01) { aspect = a; document.documentElement.style.setProperty('--a', a); layout(); }
+    };
+    b.appendChild(im); b.addEventListener('click', () => openLb(i)); grid.appendChild(b); cells.push(im);
+  });
+  layout();
+}
+
+const divisors = n => { const d = []; for (let c = 1; c <= n; c++) if (n % c === 0) d.push(c); return d; };
+const nearestDiv = (n, want) => divisors(n).reduce((b, c) => Math.abs(c - want) <= Math.abs(b - want) ? c : b);
+
+function layout() {
+  const n = cells.length; if (!n) return;
+  let want = CONFIG.steps[0][1];
+  for (const [w, c] of CONFIG.steps) if (window.innerWidth >= w) want = c;
+  const cols = CONFIG.regular ? nearestDiv(n, want) : want;
+  main.className = ''; document.body.classList.remove('fit');          // measure as a normal page first
+  grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  const cs = getComputedStyle(main), gap = parseFloat(getComputedStyle(grid).columnGap) || 8;
+  const aw = main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ah = window.innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const rows = Math.ceil(n / cols), cellH = (aw - (cols - 1) * gap) / cols / aspect;
+  const fit = rows * cellH + (rows - 1) * gap <= ah;                    // everything on one screen?
+  main.className = fit ? 'fit' : ''; document.body.classList.toggle('fit', fit);
+  refreshSizes();
+}
+
+function refreshSizes() {
+  if (!cells.length) return;
+  const cw = cells[0].parentElement.getBoundingClientRect().width;
+  const need = Math.max(cw, cw / aspect) * dpr();    // longest side of one cell, in real pixels
+  const tries = pickOrder(need);
+  cells.forEach((im, i) => { if (im.dataset.size !== String(tries[0])) load(im, imgs()[i], tries); });
+}
+
+/* ----- Large view ----- */
+function openLb(i) {
+  openIdx = i; const item = imgs()[i], p = P();
+  $('lbTitle').textContent = `${p.title} ${label(i)}`;
+  $('lbInfo').textContent = p.info || ''; $('lbInfo').hidden = !p.info;
+  lbBuy.textContent = CONFIG.buy;                     // no link yet = shown faded and not clickable
+  if (item.url) lbBuy.href = item.url; else lbBuy.removeAttribute('href');
+  const thumb = cells[i];                             // show the grid thumbnail at once, then swap in the big one
+  if (thumb.src) lbImg.src = thumb.src; else lbImg.removeAttribute('src');
+  const h = Math.min(window.innerHeight - 215, (window.innerWidth - 32) / aspect);
+  const tries = pickOrder(Math.max(h, h * aspect) * dpr()), token = ++lbToken;
+  loadFirst(item, tries).then(im => { if (im && token === lbToken) lbImg.src = im.src; });
+  lb.hidden = false; document.body.classList.add('lb-open'); $('lbX').focus({ preventScroll: true });
+}
+function closeLb() {
+  if (lb.hidden) return;
+  lb.hidden = true; lbToken++; document.body.classList.remove('lb-open');
+  if (cells[openIdx]) cells[openIdx].parentElement.focus({ preventScroll: true });
+}
+const step = d => {
+  let i = openIdx;
+  for (let k = 0; k < cells.length; k++) {
+    i = (i + d + cells.length) % cells.length;
+    if (!cells[i].parentElement.classList.contains('empty')) return openLb(i);
+  }
+};
+$('lbX').addEventListener('click', closeLb);
+$('lbPrev').addEventListener('click', () => step(-1));
+$('lbNext').addEventListener('click', () => step(1));
+lb.addEventListener('click', e => { if (e.target === lb) closeLb(); });
+let sx = 0;
+lb.addEventListener('touchstart', e => { sx = e.changedTouches[0].clientX; }, { passive: true });
+lb.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 60) step(dx < 0 ? 1 : -1); }, { passive: true });
+
+/* ----- Switching portrait ----- */
+function selectPortrait(k) {
+  if (k === cur) return;
+  cur = k; closeLb(); render(); window.scrollTo(0, 0);
+}
+
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(layout, 120); });
+
+/* ----- Menu ----- */
+const btn = $('btn'), menu = $('menu'), pBtn = $('portraitsBtn'), pList = $('portraitList');
+const setOpen = o => { menu.classList.toggle('open', o); btn.setAttribute('aria-expanded', o); if (!o) setDrop(false); };
+const setDrop = o => { pList.classList.toggle('open', o); pBtn.setAttribute('aria-expanded', o); pBtn.lastElementChild.textContent = o ? '\u2212' : '+'; };
+btn.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
+pBtn.addEventListener('click', () => setDrop(!pList.classList.contains('open')));
+CONFIG.portraits.forEach((p, i) => {
+  const li = document.createElement('li'), b = document.createElement('button');
+  b.textContent = p.title; b.setAttribute('aria-current', i === cur);
+  b.addEventListener('click', () => {
+    selectPortrait(i);
+    pList.querySelectorAll('button').forEach((x, j) => x.setAttribute('aria-current', j === i));
+    setOpen(false);
+  });
+  li.appendChild(b); pList.appendChild(li);
+});
+menu.addEventListener('click', e => { if (e.target.tagName === 'A') setOpen(false); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (!lb.hidden) closeLb(); else setOpen(false); }
+  else if (!lb.hidden && e.key === 'ArrowRight') step(1);
+  else if (!lb.hidden && e.key === 'ArrowLeft') step(-1);
+});
+
+render();
+</script>
+</body>
+</html>
