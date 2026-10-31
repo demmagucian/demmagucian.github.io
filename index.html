@@ -83,7 +83,7 @@ const CONFIG = {
   portraits: [
     { title: "Study for Self-Portrait with Tortoiseshell Glasses and Hawaiian Shirt, 2026",
       folder: "images/portrait-1",
-      count: 2,       // how many images are uploaded right now. Raise it as you upload more (up to 100)
+      count: 4,       // how many images are uploaded right now. Raise it as you upload more (up to 100)
       url: "" }   // optional marketplace link per image; {n} becomes 1, 2 ... 100, e.g. "https://example.com/token/{n}"
   ],
   transitionMs: 4000,   // time for one full dissolve from one image to the next
@@ -100,11 +100,11 @@ const CONFIG = {
   hover: true,          // while the mouse (or a finger) moves over the image, the transition parameters vary randomly
   hoverModes: ["multiply", "screen", "overlay", "soft-light", "hard-light", "difference"],  // blend modes it may pick: a new one at the start of each transition while hovering
   hoverAmount: [0.2, 1],       // range for the random blend strength
-  hoverEveryMs: 900,           // while the mouse is over the image, a new random strength is picked this often (ms)
-  hoverGlide: 0.12,            // how quickly the strength follows each new value (0.06 = lazy, 0.18 = snappy)
-  hoverFloor: 0.35,            // how much of the blend shows even at the start and end of a transition (0 = none, 1 = full)
-  hoverFadeMs: 800,            // how long the hover effect takes to fade in when the mouse arrives and out when it leaves
-  hoverIdleMs: 1500,           // the mouse counts as hovering until it has been still this long (ms)
+  hoverEveryMs: 500,           // while the mouse is over the image, a new random strength is picked this often (ms)
+  hoverGlide: 0.22,            // how quickly the strength follows each new value (0.06 = lazy, 0.18 = snappy)
+  hoverFloor: 0.6,            // how much of the blend shows even at the start and end of a transition (0 = none, 1 = full)
+  hoverFadeMs: 500,            // how long the hover effect takes to fade in when the mouse arrives and out when it leaves
+  hoverIdleMs: 700,           // the mouse counts as hovering until it has been still this long (ms)
   grainSize: 1,         // grain style only: 1 = every pixel dissolves on its own
   focus: [0.5, 0.5]     // part of each image that stays in view when the window crops it (0-1, [0.5, 0.5] = center)
 };
