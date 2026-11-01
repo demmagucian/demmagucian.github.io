@@ -91,9 +91,9 @@ const CONFIG = {
       count: 4,       // how many images are uploaded right now. Raise it as you upload more (up to 100)
       url: "" }   // optional marketplace link per image; {n} becomes 1, 2 ... 100, e.g. "https://example.com/token/{n}"
   ],
-  transitionMs: 4000,   // time for one full dissolve from one image to the next
-  holdMs: 0,            // pause on each image between dissolves (0 = continuous)
-  order: "sequence",    // "sequence" or "shuffle"
+  transitionMs: 3000,   // time for one full dissolve from one image to the next
+  holdMs: 500,            // pause on each image between dissolves (0 = continuous)
+  order: "shuffle",    // "sequence" or "shuffle"
   imageBase: "",        // where your image folders live. "" = same site. With R2: "https://images.yourdomain.com/" (keep the final slash)
   imageCors: false,     // set true ONLY if images come from another address (R2) whose CORS settings allow your site; the selection tool needs it
   sizes: [],            // [] = one size, files directly in the portrait folder (images/portrait-1/001.jpg ...).
@@ -109,15 +109,15 @@ const CONFIG = {
   hoverEveryMs: 900,           // while the mouse is over the image, a new random strength is picked this often (ms)
   hoverGlide: 0.12,            // how quickly the strength follows each new value (0.06 = lazy, 0.18 = snappy)
   hoverFloor: 0.35,            // how much of the blend shows even at the start and end of a transition (0 = none, 1 = full)
-  hoverFadeMs: 800,            // how long the hover effect takes to fade in when the mouse arrives and out when it leaves
+  hoverFadeMs: 550,            // how long the hover effect takes to fade in when the mouse arrives and out when it leaves
   hoverIdleMs: 1500,           // the mouse counts as hovering until it has been still this long (ms)
   selection: true,             // click = pick the pixels of similar color (like a magic wand) and LOCK them as they look right now.
                                // The rest keeps looping. Every click adds to the locked area. Clear it with Esc or "Clear selection" in the menu
-  flashMs: 250,                // while something is locked, the rest changes in a quick flash of this length (ms) instead of a slow dissolve (0 = keep the dissolve)
-  selectionHoldMs: 8000,       // a locked area unlocks by itself after this many ms (0 = stays locked until you clear it)
-  releaseMs: 1500,             // an unlocked area dissolves back into the loop over this time (0 = instant)
+  flashMs: 450,                // while something is locked, the rest changes in a quick flash of this length (ms) instead of a slow dissolve (0 = keep the dissolve)
+  selectionHoldMs: 4000,       // a locked area unlocks by itself after this many ms (0 = stays locked until you clear it)
+  releaseMs: 500,             // an unlocked area dissolves back into the loop over this time (0 = instant)
   clickToRelease: true,        // true = clicking a locked area unlocks only that area
-  wandTolerance: 40,           // how different a color can be and still be picked (0-441; about 20 = strict, 80 = loose)
+  wandTolerance: 60,           // how different a color can be and still be picked (0-441; about 20 = strict, 80 = loose)
   wandContiguous: true,        // true = only pixels connected to the click, like Fresco. false = similar colors anywhere in the image
   selectionRes: 640,           // resolution of the selection (long edge, px). Higher = finer edges but slower on phones
   grainSize: 1,         // grain style only: 1 = every pixel dissolves on its own
