@@ -97,7 +97,7 @@ const CONFIG = {
   blendMode: "multiply", // multiply, screen, overlay, soft-light, hard-light, difference, color-dodge, color-burn, luminosity
   blendAmount: 0.7,      // strength of the blend-mode look in the middle (0 = plain crossfade, 1 = full)
   blendIntensity: 0.5,   // overall strength of every blend-mode effect (more saturated, negative, contrasty colors). 1 = as before, 0.5 = half as intense, 0 = none
-  grainPixelSize: 1,     // finest possible: one canvas pixel per reveal unit
+  grainPixelSize: 5,     // finest possible: one canvas pixel per reveal unit
     ease: true,           // soft start and soft end of each transition
   hover: true,          // while the mouse or a finger is on the image, the transition parameters vary
   hoverModes: ["multiply", "screen", "overlay", "soft-light", "hard-light"],  // blend modes it may pick while hovering
@@ -122,7 +122,7 @@ const CONFIG = {
     lensFollowMs: 120,   // how closely the reveal follows the pointer (lower = tighter, higher = floatier)
     lensFadeInMs: 700,   // how slowly the reveal appears when you arrive (ms)
     lensFadeOutMs: 2500, // how slowly it fades away after you leave (ms)
-    lensPixelSize: 1, // finest possible: one canvas pixel per reveal unit
+    lensPixelSize: 4, // finest possible: one canvas pixel per reveal unit
     lensTrailFadeMs: 2200, // how long revealed grain pixels linger after the pointer moves away
     lensTrailStrength: 1, // intensity of the grain trace (0-1)
     zoom: 0           // the image grows by this much while you press it, then eases back (0.0035 = 0.35%, 0 = no zoom)
