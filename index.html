@@ -107,18 +107,18 @@ const CONFIG = {
 
   /* How the image reacts to the mouse, a finger, a click or the wheel. All of it responds at once and fades out when you stop */
   react: {
-    base: 0.6,        // effect level while the mouse or finger is simply on the image (0-1)
+    base: 0.9,        // effect level while the mouse or finger is simply on the image (0-1)
     motion: 0.8,      // extra level added by how fast the pointer moves (or the wheel turns)
     speedRef: 700,    // pointer speed (px/s) that counts as "full speed". Lower = reacts to gentler movement
     attackMs: 120,    // how fast the effect rises when you arrive (lower = snappier)
     pulseMs: 700,     // a touch or click gives a short burst that fades over this time (ms)
     boost: 2,         // while reacting, the dissolve runs faster: 2 = up to 3x faster at full effect (0 = same speed)
     skipHold: true,   // true = touching the image ends the pause between dissolves right away
-    lens: 1,          // strength of the hover reveal: the incoming image shows around the pointer (0 = off, 1 = full)
-    lensSize: 0.5,    // size of the reveal as a fraction of the image's long side. Big and soft enough that no round shape shows (0.4 = small, 1.2 = nearly everything)
-    lensFollowMs: 200,   // how closely the reveal follows the pointer (lower = tighter, higher = floatier)
+    lens: 0.5,          // strength of the hover reveal: the incoming image shows around the pointer (0 = off, 1 = full)
+    lensSize: 0.3,    // size of the reveal as a fraction of the image's long side. Big and soft enough that no round shape shows (0.4 = small, 1.2 = nearly everything)
+    lensFollowMs: 100,   // how closely the reveal follows the pointer (lower = tighter, higher = floatier)
     lensFadeInMs: 800,   // how slowly the reveal appears when you arrive (ms)
-    lensFadeOutMs: 1600  // how slowly it fades away after you leave (ms)
+    lensFadeOutMs: 6000  // how slowly it fades away after you leave (ms)
   },
   tapSlop: 10,          // px: moving more than this while pressed is a drag, not a click. A click jumps straight to a new random image
   focus: [0.5, 0.5]     // part of each image that stays in view when the window crops it (0-1, [0.5, 0.5] = center)
