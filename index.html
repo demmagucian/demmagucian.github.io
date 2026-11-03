@@ -111,11 +111,11 @@ const CONFIG = {
     motion: 0.8,      // extra level added by how fast the pointer moves (or the wheel turns)
     speedRef: 500,    // pointer speed (px/s) that counts as "full speed". Lower = reacts to gentler movement
     attackMs: 120,    // how fast the effect rises when you arrive (lower = snappier)
-    pulseMs: 600,     // a touch or click gives a short burst that fades over this time (ms)
-    boost: 2,         // while reacting, the dissolve runs faster: 2 = up to 3x faster at full effect (0 = same speed)
+    pulseMs: 1600,     // a touch or click gives a short burst that fades over this time (ms)
+    boost: 1,         // while reacting, the dissolve runs faster: 2 = up to 3x faster at full effect (0 = same speed)
     skipHold: true,   // true = touching the image ends the pause between dissolves right away
     lens: 1,          // strength of the hover reveal: the incoming image shows around the pointer (0 = off, 1 = full)
-    lensSize: 0.45,    // size of the reveal as a fraction of the image's long side. Big and soft enough that no round shape shows (0.4 = small, 1.2 = nearly everything)
+    lensSize: 0.3,    // size of the reveal as a fraction of the image's long side. Big and soft enough that no round shape shows (0.4 = small, 1.2 = nearly everything)
     lensFollowMs: 120,   // how closely the reveal follows the pointer (lower = tighter, higher = floatier)
     lensFadeInMs: 500,   // how slowly the reveal appears when you arrive (ms)
     lensFadeOutMs: 1250  // how slowly it fades away after you leave (ms)
@@ -136,7 +136,7 @@ const RANDOM = {
     holdMs: [0, 2500],
     order: { pick: ["sequence", "shuffle"] },
     style: { pick: ["blend", "crossfade"] },
-    blendMode: { pick: ["multiply", "screen", "overlay", "soft-light", "hard-light", "difference", "color-dodge", "color-burn", "luminosity"] },
+    blendMode: { pick: ["multiply", "screen", "overlay", "soft-light", "difference","hue", "color-dodge", "luminosity"] },
     blendAmount: [0.2, 1],
     ease: { pick: [true, false] },
     hoverAmount: { pair: [0.05, 1] },
