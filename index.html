@@ -86,9 +86,9 @@ const CONFIG = {
       url: "" }       // reserved for a marketplace link per image (not used yet)
   ],
   seed: null,           // null = a new random seed on every visit. A number (e.g. 12345) = the same random choices every time
-  transitionMs: 6000,   // time for one full dissolve from one image to the next
+  transitionMs: 3000,   // time for one full dissolve from one image to the next
   holdMs: 0,            // pause on each image between dissolves (0 = continuous)
-  order: "sequence",    // "sequence" or "shuffle"
+  order: "shuffle",    // "sequence" or "shuffle"
   imageBase: "",        // where your image folders live. "" = same site. With R2: "https://images.yourdomain.com/" (keep the final slash)
   imageCors: false,     // set true ONLY if images come from another address (R2) whose CORS settings allow your site; saving a piece needs it
   sizes: [],            // [] = one size, files directly in the portrait folder. Later: [1600, 3200], one subfolder per size
@@ -99,24 +99,24 @@ const CONFIG = {
   blendIntensity: 0.5,   // overall strength of every blend-mode effect (more saturated, negative, contrasty colors). 1 = as before, 0.5 = half as intense, 0 = none
   ease: true,           // soft start and soft end of each transition
   hover: true,          // while the mouse or a finger is on the image, the transition parameters vary
-  hoverModes: ["multiply", "screen", "overlay", "soft-light", "hard-light"],  // blend modes it may pick while hovering
+  hoverModes: ["multiply", "screen", "overlay", "soft-light", "hard-light", "color-dodge", "color-burn", "luminosity" ],  // blend modes it may pick while hovering
   hoverAmount: [0.2, 1],       // range for the random blend strength
-  hoverEveryMs: 900,           // while hovering, a new random strength is picked this often (ms)
-  hoverGlide: 0.12,            // how quickly the strength follows each new value (0.06 = lazy, 0.18 = snappy)
-  hoverFloor: 0.35,            // how much of the blend shows even at the start and end of a transition (0 = none, 1 = full)
-  hoverFadeMs: 800,            // how long the hover effect takes to fade out after you leave
-  hoverIdleMs: 1500,           // the mouse or finger counts as present until it has been still this long (ms)
+  hoverEveryMs: 500,           // while hovering, a new random strength is picked this often (ms)
+  hoverGlide: 0.18,            // how quickly the strength follows each new value (0.06 = lazy, 0.18 = snappy)
+  hoverFloor: 0.75,            // how much of the blend shows even at the start and end of a transition (0 = none, 1 = full)
+  hoverFadeMs: 500,            // how long the hover effect takes to fade out after you leave
+  hoverIdleMs: 500,           // the mouse or finger counts as present until it has been still this long (ms)
 
   /* How the image reacts to the mouse, a finger, a click or the wheel. All of it responds at once and fades out when you stop */
   react: {
-    base: 0.6,        // effect level while the mouse or finger is simply on the image (0-1)
+    base: 0.8,        // effect level while the mouse or finger is simply on the image (0-1)
     motion: 0.8,      // extra level added by how fast the pointer moves (or the wheel turns)
-    speedRef: 700,    // pointer speed (px/s) that counts as "full speed". Lower = reacts to gentler movement
+    speedRef: 300,    // pointer speed (px/s) that counts as "full speed". Lower = reacts to gentler movement
     attackMs: 120,    // how fast the effect rises when you arrive (lower = snappier)
-    pulseMs: 700,     // a touch or click gives a short burst that fades over this time (ms)
+    pulseMs: 500,     // a touch or click gives a short burst that fades over this time (ms)
     boost: 0,         // while reacting, the dissolve runs faster: 2 = up to 3x faster at full effect (0 = same speed, no sudden speed-ups)
     skipHold: true,   // true = touching the image ends the pause between dissolves right away
-    lens: 0,          // strength of the lantern reveal around the pointer (0 = off: hovering only changes the intensity of the loop, 1 = full)
+    lens: 0.5,          // strength of the lantern reveal around the pointer (0 = off: hovering only changes the intensity of the loop, 1 = full)
     lensSize: 0.48,   // size of the reveal as a fraction of the image's long side (it was 0.8, now 40% smaller). Soft edges, so no round shape shows (0.3 = small, 1.2 = nearly everything)
     lensFollowMs: 120,   // how closely the reveal follows the pointer (lower = tighter, higher = floatier)
     lensFadeInMs: 700,   // how slowly the reveal appears when you arrive (ms)
