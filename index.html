@@ -300,6 +300,7 @@ const fadeC = document.createElement('canvas'), fctx = fadeC.getContext('2d');  
 let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
 
 /* The canvas always takes the proportions of the image and fits inside the window with a margin */
+const HOME_SCALE = { portrait: .82, landscape: .86 };   // size of the home image: 1 = as before, .82 = 18% smaller
 let aspect = 3 / 4;
 function setBox() {
   const stage = document.getElementById('home');
@@ -311,8 +312,10 @@ function setBox() {
     // Cover the complete viewport without distorting the source image.
     w = Math.max(w, h * aspect);
     h = w / aspect;
-  } else if (window.matchMedia('(orientation: portrait) and (min-width: 700px)').matches) {
-    w *= .92; h *= .90;
+  } else {
+    if (window.matchMedia('(orientation: portrait) and (min-width: 700px)').matches) { w *= .92; h *= .90; }
+    const k = stage.clientHeight > stage.clientWidth ? HOME_SCALE.portrait : HOME_SCALE.landscape;   // home image size
+    w *= k; h *= k;
   }
   cv.style.aspectRatio = aspect;
   cv.style.height = 'auto';
