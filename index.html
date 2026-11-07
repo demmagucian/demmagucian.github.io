@@ -68,21 +68,17 @@
   .menu-panel .social-links .x-mark { fill: currentColor; stroke: none; }
   .menu-panel .copyright { margin-top: 8px; text-align: right; font-size: 10px; letter-spacing: .01em; color: var(--ink); white-space: nowrap; }
 
-  /* Landscape on touch devices (iPhone + iPad): the home shrinks into a banner strip under the header and the
-     opaque menu opens under it, sized to its own content so nothing scrolls. Desktop keeps the overlay above
-     and the home does not move. */
-  @media (orientation: landscape) and (hover: none) and (pointer: coarse) {
-    :root { --m: clamp(10px, 1.8vw, 18px); --site-type: clamp(1rem, 2.1vw, 1.2rem); }
-    body.menu-open .stage { top: var(--head-text-b); bottom: var(--menu-live, 150px); --pad-t: var(--gap); --pad-b: var(--gap); }
-    body.menu-open .menu-panel { top: auto; bottom: 0; height: auto; max-height: none; overflow: visible;
-      padding: 2px var(--m) max(6px, env(safe-area-inset-bottom, 0px)); background: #fff; }
-    body.menu-open .menu-panel .menu-links { width: 100%; }
-    body.menu-open .menu-panel .menu-links a { padding: clamp(4px, 1.3vh, 9px) 0; line-height: 1.1; }
-    body.menu-open .menu-footer { padding-top: clamp(5px, 1.2vh, 10px); }
-    body.menu-open .menu-panel .social-links { gap: 8px; }
-    body.menu-open .menu-panel .social-links a { width: 18px; height: 18px; }
-    body.menu-open .menu-panel .social-links svg { width: 14px; height: 14px; }
-    body.menu-open .menu-panel .copyright { margin-top: 3px; font-size: 9px; }
+  /* Short landscape screens (phones): same behaviour as desktop and iPad — the menu unfolds over the empty
+     area on the right and the home does not move. It is only compacted so it fits without scrolling. */
+  @media (orientation: landscape) and (max-height: 600px) {
+    .menu-panel { padding: 0 var(--m) max(6px, env(safe-area-inset-bottom, 0px)); }
+    .menu-panel .menu-links { width: min(240px, 30vw); }
+    .menu-panel .menu-links a { padding: clamp(4px, 1.3vh, 9px) 0; line-height: 1.1; }
+    .menu-footer { padding-top: clamp(5px, 1.2vh, 10px); }
+    .menu-panel .social-links { gap: 8px; }
+    .menu-panel .social-links a { width: 18px; height: 18px; }
+    .menu-panel .social-links svg { width: 14px; height: 14px; }
+    .menu-panel .copyright { margin-top: 3px; font-size: 9px; }
   }
 
   /* Portrait: home above an opaque, full-width bottom menu.
