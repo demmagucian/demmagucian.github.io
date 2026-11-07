@@ -42,14 +42,19 @@
     background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
     background-size: 8px 1px; animation: ants 0.7s linear infinite; }
   @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
+  /* Same marching-ants line under the footer icons */
+  .social-links > div { position: relative; display: flex; align-items: center; gap: 4px; }
+  .social-links > div::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 4.5px); height: 1px; pointer-events: none;   /* centered in the 10px gap between icons and ©2026 */
+    background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
+    background-size: 8px 1px; animation: ants 0.7s linear infinite; }
   .site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
   .copyright { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); }
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
     display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-end;
-    padding: 8px var(--m) 0;
+    padding: 6px var(--m) 0;
     background: transparent; }
   .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
-  .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; }
+  .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 10px; }
   .social-stack { transform: none; }
   .social-links { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
   .social-links a { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
@@ -74,7 +79,7 @@
     .copyright { font-size: 8px; }
     .social-links { gap: 7px; }
   }
-  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn { transition: none; } .site-name::after, .main-nav a::after { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn { transition: none; } .site-name::after, .main-nav a::after, .social-links > div::after { animation: none; } }
 </style>
 </head>
 <body>
@@ -247,12 +252,12 @@ function updateAmbilight(now) {
   // so the color bleeds outward from the image edges into the background and fades away.
   const sr = document.getElementById('home').getBoundingClientRect(), ir = cv.getBoundingClientRect();
   if (!sr.width || !sr.height) return;
-  const gw = GLOW_W, gh = Math.max(1, Math.round(GLOW_W * sr.height / sr.width)), k = gw / sr.width;
+  const gw = GLOW_W, gh = Math.max(1, Math.round(GLOW_W * sr.height / sr.width)), kx = gw / sr.width, ky = gh / sr.height;   // separate x/y scales: gh is rounded, so one shared scale would slide the glow up or down
   if (glowCanvas.width !== gw || glowCanvas.height !== gh) { glowCanvas.width = gw; glowCanvas.height = gh; }
-  const mw = gw * 3, mh = gh * 3, k3 = k * 3;   // two-step downscale keeps the grain from flickering in the glow
+  const mw = gw * 3, mh = gh * 3, kx3 = kx * 3, ky3 = ky * 3;   // two-step downscale keeps the grain from flickering in the glow
   if (midCanvas.width !== mw || midCanvas.height !== mh) { midCanvas.width = mw; midCanvas.height = mh; }
   midCtx.clearRect(0, 0, mw, mh);
-  midCtx.drawImage(cv, (ir.left - sr.left) * k3, (ir.top - sr.top) * k3, ir.width * k3, ir.height * k3);
+  midCtx.drawImage(cv, (ir.left - sr.left) * kx3, (ir.top - sr.top) * ky3, ir.width * kx3, ir.height * ky3);
   glowCtx.clearRect(0, 0, gw, gh);
   glowCtx.drawImage(midCanvas, 0, 0, gw, gh);
 
