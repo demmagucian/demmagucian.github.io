@@ -26,6 +26,8 @@
     box-shadow: none; }
   .stage canvas.ambilight { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%;
     transform: none; pointer-events: none; opacity: .42; image-rendering: auto; }
+  .stage canvas.reflection { position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none;
+    pointer-events: none; opacity: .8; image-rendering: auto; will-change: contents; }   /* soft mirrored glow on the "floor" below the image */
   #c { position: relative; z-index: 1; background: #000; }   /* image always on top of the halo and fully opaque */
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
@@ -84,7 +86,7 @@
 </head>
 <body>
 
-<div class="stage" id="home"><canvas class="ambilight" id="ambilight" aria-hidden="true"></canvas><canvas id="c"></canvas></div>
+<div class="stage" id="home"><canvas class="ambilight" id="ambilight" aria-hidden="true"></canvas><canvas class="reflection" id="reflection" aria-hidden="true"></canvas><canvas id="c"></canvas></div>
 <div class="caption"><span id="capTitle"></span> <span class="cap-num"><span id="nA"></span><span id="nB"></span></span></div>
 
 <header class="site-header">
@@ -245,6 +247,60 @@ const GLOW_W = 40;
 const midCanvas = document.createElement('canvas'), midCtx = midCanvas.getContext('2d');
 const glowCtx = glowCanvas.getContext('2d');
 let lastGlowUpdate = 0;
+const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d', { willReadFrequently: true });
+const reflMid = document.createElement('canvas'), reflMidCtx = reflMid.getContext('2d');
+const reflBgCanvas = document.createElement('canvas'); reflBgCanvas.width = 8; reflBgCanvas.height = 4;
+const reflBg = reflBgCanvas.getContext('2d', { willReadFrequently: true });
+const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContext('2d');
+const REFL_SOFT = [-2, -1.33, -.67, 0, .67, 1.33, 2];   // blur taps in reflection pixels: wider = the outline dissipates further
+function reflBlur(dst, src, w, h, dx, dy) {                // average of shifted copies (each drawn with alpha 1/n = exact running average)
+  dst.globalCompositeOperation = 'source-over'; dst.clearRect(0, 0, w, h);
+  REFL_SOFT.forEach((o, i) => { dst.globalAlpha = 1 / (i + 1); dst.drawImage(src, o * dx, o * dy, w, h); });
+  dst.globalAlpha = 1;
+}
+const REFL_W = 96, REFL_HEIGHT = 1;   // REFL_HEIGHT: length of the reflection as a fraction of the image height (1 = the whole image, mirrored)
+const REFL_PAD = .02;   // the layer reaches this far past each side of the image (fraction of the image width), so the soft end fades outside the image width
+function updateReflection(sr, ir) {
+  const h = ir.height * REFL_HEIGHT;
+  if (document.getElementById('home').classList.contains('section-mode') || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; return; }   // hidden in the sections
+  const padPx = ir.width * REFL_PAD, W = ir.width + 2 * padPx;
+  reflCanvas.style.display = 'block';
+  reflCanvas.style.left = (ir.left - sr.left - padPx) + 'px';
+  reflCanvas.style.top = (ir.bottom - sr.top + 1) + 'px';
+  reflCanvas.style.width = W + 'px';
+  reflCanvas.style.height = h + 'px';
+  reflCanvas.style.transform = 'none';
+  const rw = REFL_W, rh = Math.max(2, Math.round(rw * h / W)), padT = Math.round(rw * padPx / W);
+  if (reflCanvas.width !== rw || reflCanvas.height !== rh) { reflCanvas.width = rw; reflCanvas.height = rh; }
+  const mw = rw * 2, mh = rh * 2, x0 = padT * 2, sw = mw - 2 * x0;   // sw: the image width, in mid-canvas pixels
+  if (reflMid.width !== mw || reflMid.height !== mh) { reflMid.width = mw; reflMid.height = mh; }
+  const frac = Math.min(1, h / ir.height);
+  reflMidCtx.save();
+  reflMidCtx.clearRect(0, 0, mw, mh);
+  reflMidCtx.translate(0, mh); reflMidCtx.scale(1, -1);            // mirror the bottom strip of the image
+  reflMidCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, x0, 0, sw, mh);
+  reflMidCtx.restore();
+  if (x0 > 0) {                                                    // continue the outermost pixel columns into the side margins
+    reflMidCtx.drawImage(reflMid, x0, 0, 1, mh, 0, 0, x0, mh);
+    reflMidCtx.drawImage(reflMid, x0 + sw - 1, 0, 1, mh, x0 + sw, 0, x0, mh);
+  }
+  reflCtx.globalCompositeOperation = 'source-over';
+  reflCtx.clearRect(0, 0, rw, rh);
+  reflCtx.drawImage(reflMid, 0, 0, rw, rh);
+  reflCtx.globalCompositeOperation = 'destination-in';             // fade out downward, and soften the left and right ends
+  let g = reflCtx.createLinearGradient(0, 0, 0, rh);
+  g.addColorStop(0, 'rgba(0,0,0,.75)'); g.addColorStop(.2, 'rgba(0,0,0,.4)'); g.addColorStop(.5, 'rgba(0,0,0,.14)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  reflCtx.fillStyle = g; reflCtx.fillRect(0, 0, rw, rh);
+  // Soft ends: the fade-to-dark happens in the side margins, so the reflection is at (almost) full strength across the whole image width.
+  const e = Math.min(.45, (padPx / W) * 1.3);
+  g = reflCtx.createLinearGradient(0, 0, rw, 0);
+  for (let k = 0; k <= 5; k++) {
+    const u = k / 5, a = u * u * (3 - 2 * u);
+    g.addColorStop(u * e, `rgba(0,0,0,${a})`); g.addColorStop(1 - u * e, `rgba(0,0,0,${a})`);
+  }
+  reflCtx.fillStyle = g; reflCtx.fillRect(0, 0, rw, rh);
+  reflCtx.globalCompositeOperation = 'source-over';
+}
 function updateAmbilight(now) {
   if (now - lastGlowUpdate < 80 || !cv.width || !cv.height) return;
   lastGlowUpdate = now;
@@ -260,6 +316,7 @@ function updateAmbilight(now) {
   midCtx.drawImage(cv, (ir.left - sr.left) * kx3, (ir.top - sr.top) * ky3, ir.width * kx3, ir.height * ky3);
   glowCtx.clearRect(0, 0, gw, gh);
   glowCtx.drawImage(midCanvas, 0, 0, gw, gh);
+  updateReflection(sr, ir);
 
   // The same live image colors also illuminate the white interface typography and icons.
   // Keep the sampling small and guarded so cross-origin image settings cannot break the animation.
