@@ -23,9 +23,9 @@
     background: #000; touch-action: none; overscroll-behavior: none; }
   canvas { display: block; height: auto; background: transparent; touch-action: none; outline: none; cursor: pointer; will-change: transform;
     box-shadow: none; }
-  .stage canvas.ambilight { position: absolute; z-index: 0; left: 50%; top: 50%; width: 0; height: 0;
-    transform: translate(-50%, -50%) scale(1.03); pointer-events: none; opacity: .31;
-    filter: blur(12px) saturate(1.35) brightness(.95); will-change: contents; }
+  .stage canvas.ambilight { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%;
+    transform: none; pointer-events: none; opacity: .4;
+    filter: blur(50px) saturate(1.35) brightness(.95); will-change: contents; }
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
     display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
@@ -229,19 +229,25 @@ CONFIG.portraits.forEach(p => {
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const glowCanvas = document.getElementById('ambilight');
-glowCanvas.width = 56; glowCanvas.height = 56;
+const GLOW_W = 64;
 const glowCtx = glowCanvas.getContext('2d');
 let lastGlowUpdate = 0;
 function updateAmbilight(now) {
   if (now - lastGlowUpdate < 45 || !cv.width || !cv.height) return;
   lastGlowUpdate = now;
-  glowCtx.clearRect(0, 0, 56, 56);
-  glowCtx.drawImage(cv, 0, 0, 56, 56);
+  // The glow layer covers the whole stage. The image is drawn onto it at its real position,
+  // so the color bleeds outward from the image edges into the background and fades away.
+  const sr = document.getElementById('home').getBoundingClientRect(), ir = cv.getBoundingClientRect();
+  if (!sr.width || !sr.height) return;
+  const gw = GLOW_W, gh = Math.max(1, Math.round(GLOW_W * sr.height / sr.width)), k = gw / sr.width;
+  if (glowCanvas.width !== gw || glowCanvas.height !== gh) { glowCanvas.width = gw; glowCanvas.height = gh; }
+  glowCtx.clearRect(0, 0, gw, gh);
+  glowCtx.drawImage(cv, (ir.left - sr.left) * k, (ir.top - sr.top) * k, ir.width * k, ir.height * k);
 
   // The same live image colors also illuminate the white interface typography and icons.
   // Keep the sampling small and guarded so cross-origin image settings cannot break the animation.
   try {
-    const pixels = glowCtx.getImageData(0, 0, 56, 56).data;
+    const pixels = glowCtx.getImageData(0, 0, gw, gh).data;
     let r = 0, g = 0, b = 0, weight = 0;
     for (let i = 0; i < pixels.length; i += 16) {
       const alpha = pixels[i + 3] / 255;
@@ -294,10 +300,6 @@ function setBox() {
   cv.style.aspectRatio = aspect;
   cv.style.height = 'auto';
   cv.style.width = `${Math.min(w, h * aspect)}px`;
-  const glow = document.getElementById('ambilight');
-  glow.style.width = cv.style.width;
-  glow.style.aspectRatio = aspect;
-  glow.style.height = 'auto';
 }
 function applyAspect(im) {
   const a = (im.naturalWidth || im.width) / (im.naturalHeight || im.height);
