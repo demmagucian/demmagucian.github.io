@@ -24,8 +24,7 @@
   canvas { display: block; height: auto; background: transparent; touch-action: none; outline: none; cursor: pointer; will-change: transform;
     box-shadow: none; }
   .stage canvas.ambilight { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%;
-    transform: none; pointer-events: none; opacity: .4;
-    filter: blur(26px) saturate(1.35) brightness(.95); will-change: contents; }
+    transform: none; pointer-events: none; opacity: .42; image-rendering: auto; }
   #c { position: relative; z-index: 1; background: #000; }   /* image always on top of the halo and fully opaque */
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
@@ -230,11 +229,12 @@ CONFIG.portraits.forEach(p => {
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const glowCanvas = document.getElementById('ambilight');
-const GLOW_W = 64;
+const GLOW_W = 40;
+const midCanvas = document.createElement('canvas'), midCtx = midCanvas.getContext('2d');
 const glowCtx = glowCanvas.getContext('2d');
 let lastGlowUpdate = 0;
 function updateAmbilight(now) {
-  if (now - lastGlowUpdate < 45 || !cv.width || !cv.height) return;
+  if (now - lastGlowUpdate < 80 || !cv.width || !cv.height) return;
   lastGlowUpdate = now;
   // The glow layer covers the whole stage. The image is drawn onto it at its real position,
   // so the color bleeds outward from the image edges into the background and fades away.
@@ -242,8 +242,12 @@ function updateAmbilight(now) {
   if (!sr.width || !sr.height) return;
   const gw = GLOW_W, gh = Math.max(1, Math.round(GLOW_W * sr.height / sr.width)), k = gw / sr.width;
   if (glowCanvas.width !== gw || glowCanvas.height !== gh) { glowCanvas.width = gw; glowCanvas.height = gh; }
+  const mw = gw * 3, mh = gh * 3, k3 = k * 3;   // two-step downscale keeps the grain from flickering in the glow
+  if (midCanvas.width !== mw || midCanvas.height !== mh) { midCanvas.width = mw; midCanvas.height = mh; }
+  midCtx.clearRect(0, 0, mw, mh);
+  midCtx.drawImage(cv, (ir.left - sr.left) * k3, (ir.top - sr.top) * k3, ir.width * k3, ir.height * k3);
   glowCtx.clearRect(0, 0, gw, gh);
-  glowCtx.drawImage(cv, (ir.left - sr.left) * k, (ir.top - sr.top) * k, ir.width * k, ir.height * k);
+  glowCtx.drawImage(midCanvas, 0, 0, gw, gh);
 
   // The same live image colors also illuminate the white interface typography and icons.
   // Keep the sampling small and guarded so cross-origin image settings cannot break the animation.
