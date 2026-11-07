@@ -7,7 +7,8 @@
 <style>
   :root {
     color-scheme: dark;
-    --ink: #f4f4f4;
+    --ink: #f8e3b5;
+    --ink-rgb: 248, 227, 181;
     --ambilight-rgb: 180, 180, 180;
     --m: clamp(12px, 2vw, 24px);
     --site-type: clamp(1rem, 2vw, 1.2rem);
@@ -29,14 +30,20 @@
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
     display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
-  .site-name { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .87), 0 0 21px rgba(var(--ambilight-rgb), .51); text-decoration: none; font-size: var(--site-type); line-height: 24px;
+  .site-name { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); text-decoration: none; font-size: var(--site-type); line-height: 24px;
     letter-spacing: -.025em; font-weight: 500; white-space: nowrap; }
   .main-nav { margin-left: auto; display: flex; align-items: center; gap: .5em; text-transform: lowercase; }
-  .main-nav a { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .87), 0 0 21px rgba(var(--ambilight-rgb), .51); text-decoration: none; font-size: var(--site-type); line-height: 24px;
+  .main-nav a { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); text-decoration: none; font-size: var(--site-type); line-height: 24px;
     letter-spacing: -.025em; font-weight: 400; white-space: nowrap; }
   .main-nav a:hover, .main-nav a[aria-current="page"] { opacity: .55; }
+  /* "Marching ants" line under the site name and every menu word, like a selection outline in Photoshop */
+  .site-name, .main-nav a { position: relative; display: inline-block; }
+  .site-name::after, .main-nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; pointer-events: none;
+    background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
+    background-size: 8px 1px; animation: ants 0.7s linear infinite; }
+  @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
   .site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
-  .copyright { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .87), 0 0 21px rgba(var(--ambilight-rgb), .51); }
+  .copyright { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); }
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
     display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-end;
     padding: 8px var(--m) 0;
@@ -46,7 +53,7 @@
   .social-stack { transform: none; }
   .social-links { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
   .social-links a { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
-    color: var(--ink); text-decoration: none; filter: drop-shadow(0 0 6px rgba(var(--ambilight-rgb), 1)) drop-shadow(0 0 15px rgba(var(--ambilight-rgb), .63)); }
+    color: var(--ink); text-decoration: none; filter: drop-shadow(0 0 6px rgba(var(--ambilight-rgb), .75)) drop-shadow(0 0 15px rgba(var(--ambilight-rgb), .47)); }
   .social-links a:hover { opacity: .55; }
   .social-links svg { width: 17px; height: 17px; display: block; fill: none; stroke: currentColor; stroke-width: 1.6;
     stroke-linecap: round; stroke-linejoin: round; }
@@ -67,7 +74,7 @@
     .copyright { font-size: 8px; }
     .social-links { gap: 7px; }
   }
-  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn { transition: none; } .site-name::after, .main-nav a::after { animation: none; } }
 </style>
 </head>
 <body>
