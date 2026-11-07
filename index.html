@@ -26,6 +26,7 @@
   .stage canvas.ambilight { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%;
     transform: none; pointer-events: none; opacity: .4;
     filter: blur(26px) saturate(1.35) brightness(.95); will-change: contents; }
+  #c { position: relative; z-index: 1; background: #000; }   /* image always on top of the halo and fully opaque */
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
     display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
