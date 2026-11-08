@@ -27,7 +27,7 @@
   .stage canvas.ambilight { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%;
     transform: none; pointer-events: none; opacity: .42; image-rendering: auto; }
   .stage canvas.reflection { position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none;
-    pointer-events: none; opacity: .9; image-rendering: auto; will-change: contents; }   /* soft mirrored reflection on a dark glossy surface */
+    pointer-events: none; opacity: .8; image-rendering: auto; will-change: contents; }   /* soft mirrored glow on the "floor" below the image */
   #c { position: relative; z-index: 1; background: #000; }   /* image always on top of the halo and fully opaque */
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
@@ -246,16 +246,16 @@ const glowCanvas = document.getElementById('ambilight');
 const GLOW_W = 40;
 const midCanvas = document.createElement('canvas'), midCtx = midCanvas.getContext('2d');
 const glowCtx = glowCanvas.getContext('2d');
-let lastGlowUpdate = 0;
-const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d', { willReadFrequently: true });
+let lastGlowUpdate = 0, lastReflUpdate = 0;
+const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d');
 const reflMid = document.createElement('canvas'), reflMidCtx = reflMid.getContext('2d');
 const reflBgCanvas = document.createElement('canvas'); reflBgCanvas.width = 8; reflBgCanvas.height = 4;
 const reflBg = reflBgCanvas.getContext('2d', { willReadFrequently: true });
 const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContext('2d');
 
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
-const REFL_W = 480, REFL_HEIGHT = .82; // Higher detail near the seam; reflection extends to 82% of the artwork height
-const REFL_PAD = .06;                  // extra width gives the side fade room, without a visible rectangular edge
+const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
+const REFL_PAD = .08;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
 const reflSharp = mk(), reflMed = mk(), reflHeavy = mk(), reflSmall = mk();
 
@@ -287,7 +287,7 @@ function updateReflection(sr, ir) {
   const padPx = ir.width * REFL_PAD, W = ir.width + 2 * padPx;
   reflCanvas.style.display = 'block';
   reflCanvas.style.left = (ir.left - sr.left - padPx) + 'px';
-  reflCanvas.style.top = (ir.bottom - sr.top + 1) + 'px';
+  reflCanvas.style.top = (ir.bottom - sr.top + 2) + 'px';
   reflCanvas.style.width = W + 'px';
   reflCanvas.style.height = h + 'px';
   reflCanvas.style.transform = 'none';
@@ -306,39 +306,30 @@ function updateReflection(sr, ir) {
     reflMidCtx.drawImage(reflMid, x0 + sw - 1, 0, 1, mh, x0 + sw, 0, x0, mh);
   }
 
-  /* Three focus planes: crisp at the contact edge, then progressively softer */
+  /* Three focus levels: sharp -> medium -> heavy */
   reflBlurTo(reflSharp, reflMid, rw, rh, 1);
-  reflBlurTo(reflMed, reflSharp, rw, rh, .24);
-  reflBlurTo(reflHeavy, reflMed, rw, rh, .22);
+  reflBlurTo(reflMed, reflSharp, rw, rh, .3);
+  reflBlurTo(reflHeavy, reflMed, rw, rh, .3);
 
   reflCtx.globalCompositeOperation = 'source-over';
   reflCtx.clearRect(0, 0, rw, rh);
-  // The distant plane is the quiet base; the two nearer planes fade out over it.
-  reflCtx.drawImage(reflHeavy, 0, 0, rw, rh);
-  reflLayer(reflMed, rw, rh, [[0, 1], [.18, 1], [.52, .72], [.82, 0]]);
-  reflLayer(reflSharp, rw, rh, [[0, 1], [.045, 1], [.2, .62], [.38, 0]]);
+  reflCtx.drawImage(reflHeavy, 0, 0, rw, rh);                                   // far away: very soft
+  reflLayer(reflMed, rw, rh, [[0, 1], [.35, 1], [.8, 0]]);                      // middle: medium blur
+  reflLayer(reflSharp, rw, rh, [[0, .7], [.05, .7], [.22, 0]]);                 // right under the image: slightly crisper
 
-  /* A floor reflection loses energy with distance, rather than ending at a hard edge. */
+  /* Brightness: strong near the image, falling off to black */
   reflCtx.globalCompositeOperation = 'destination-in';
   let g = reflCtx.createLinearGradient(0, 0, 0, rh);
-  g.addColorStop(0, 'rgba(0,0,0,.84)');
-  g.addColorStop(.10, 'rgba(0,0,0,.62)');
-  g.addColorStop(.28, 'rgba(0,0,0,.34)');
-  g.addColorStop(.52, 'rgba(0,0,0,.13)');
-  g.addColorStop(.76, 'rgba(0,0,0,.035)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
+  g.addColorStop(0, 'rgba(0,0,0,.8)'); g.addColorStop(.15, 'rgba(0,0,0,.55)'); g.addColorStop(.4, 'rgba(0,0,0,.22)');
+  g.addColorStop(.7, 'rgba(0,0,0,.06)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   reflCtx.fillStyle = g; reflCtx.fillRect(0, 0, rw, rh);
-
-  /* Feather both sides beyond the artwork width: no visible canvas-shaped boundary. */
-  const e = Math.min(.16, Math.max(.09, (padPx / W) * 2.4));
-  g = reflCtx.createLinearGradient(0, 0, rw, 0);
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(e * .55, 'rgba(0,0,0,.72)');
-  g.addColorStop(e, 'rgba(0,0,0,1)');
-  g.addColorStop(1 - e, 'rgba(0,0,0,1)');
-  g.addColorStop(1 - e * .55, 'rgba(0,0,0,.72)');
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  reflCtx.fillStyle = g; reflCtx.fillRect(0, 0, rw, rh);
+  // Curved aureole: an elliptical mask, so the sides curve inward as the glow goes down (like light pooling on a floor)
+  reflCtx.save();
+  reflCtx.translate(rw / 2, 0); reflCtx.scale(1, (rh * 1.05) / (rw / 2));
+  g = reflCtx.createRadialGradient(0, 0, 0, 0, 0, rw / 2);
+  g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.7, 'rgba(0,0,0,1)'); g.addColorStop(.86, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  reflCtx.fillStyle = g; reflCtx.fillRect(-rw / 2, 0, rw, rw / 2);
+  reflCtx.restore();
   reflCtx.globalCompositeOperation = 'source-over';
 }
 function updateAmbilight(now) {
@@ -356,7 +347,7 @@ function updateAmbilight(now) {
   midCtx.drawImage(cv, (ir.left - sr.left) * kx3, (ir.top - sr.top) * ky3, ir.width * kx3, ir.height * ky3);
   glowCtx.clearRect(0, 0, gw, gh);
   glowCtx.drawImage(midCanvas, 0, 0, gw, gh);
-  updateReflection(sr, ir);
+  if (now - lastReflUpdate >= 120) { lastReflUpdate = now; updateReflection(sr, ir); }
 
   // The same live image colors also illuminate the white interface typography and icons.
   // Keep the sampling small and guarded so cross-origin image settings cannot break the animation.
