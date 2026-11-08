@@ -252,14 +252,35 @@ const reflMid = document.createElement('canvas'), reflMidCtx = reflMid.getContex
 const reflBgCanvas = document.createElement('canvas'); reflBgCanvas.width = 8; reflBgCanvas.height = 4;
 const reflBg = reflBgCanvas.getContext('2d', { willReadFrequently: true });
 const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContext('2d');
-const REFL_SOFT = [-2, -1.33, -.67, 0, .67, 1.33, 2];   // blur taps in reflection pixels: wider = the outline dissipates further
-function reflBlur(dst, src, w, h, dx, dy) {                // average of shifted copies (each drawn with alpha 1/n = exact running average)
-  dst.globalCompositeOperation = 'source-over'; dst.clearRect(0, 0, w, h);
-  REFL_SOFT.forEach((o, i) => { dst.globalAlpha = 1 / (i + 1); dst.drawImage(src, o * dx, o * dy, w, h); });
-  dst.globalAlpha = 1;
+
+/* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
+const REFL_W = 320, REFL_HEIGHT = 1;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
+const REFL_PAD = .02;                  // the layer reaches this far past each side of the image (fraction of the image width)
+const mk = () => document.createElement('canvas');
+const reflSharp = mk(), reflMed = mk(), reflHeavy = mk(), reflSmall = mk();
+
+/* Cheap, Safari-safe blur: shrink, then stretch back up with smoothing */
+function reflBlurTo(dst, src, w, h, k) {
+  const sw = Math.max(2, Math.round(w * k)), sh = Math.max(2, Math.round(h * k));
+  if (reflSmall.width !== sw || reflSmall.height !== sh) { reflSmall.width = sw; reflSmall.height = sh; }
+  if (dst.width !== w || dst.height !== h) { dst.width = w; dst.height = h; }
+  const s = reflSmall.getContext('2d'), d = dst.getContext('2d');
+  s.imageSmoothingQuality = 'high'; d.imageSmoothingQuality = 'high';
+  s.clearRect(0, 0, sw, sh); s.drawImage(src, 0, 0, sw, sh);
+  d.clearRect(0, 0, w, h); d.drawImage(reflSmall, 0, 0, w, h);
 }
-const REFL_W = 96, REFL_HEIGHT = 1;   // REFL_HEIGHT: length of the reflection as a fraction of the image height (1 = the whole image, mirrored)
-const REFL_PAD = .02;   // the layer reaches this far past each side of the image (fraction of the image width), so the soft end fades outside the image width
+/* Draw `src` onto reflCtx, visible only where the vertical mask is opaque: stops = [[pos, alpha], ...] */
+function reflLayer(src, w, h, stops) {
+  if (reflTmp.width !== w || reflTmp.height !== h) { reflTmp.width = w; reflTmp.height = h; }
+  reflTmpCtx.globalCompositeOperation = 'source-over';
+  reflTmpCtx.clearRect(0, 0, w, h); reflTmpCtx.drawImage(src, 0, 0, w, h);
+  const g = reflTmpCtx.createLinearGradient(0, 0, 0, h);
+  stops.forEach(([p, a]) => g.addColorStop(p, `rgba(0,0,0,${a})`));
+  reflTmpCtx.globalCompositeOperation = 'destination-in';
+  reflTmpCtx.fillStyle = g; reflTmpCtx.fillRect(0, 0, w, h);
+  reflTmpCtx.globalCompositeOperation = 'source-over';
+  reflCtx.drawImage(reflTmp, 0, 0, w, h);
+}
 function updateReflection(sr, ir) {
   const h = ir.height * REFL_HEIGHT;
   if (document.getElementById('home').classList.contains('section-mode') || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; return; }   // hidden in the sections
@@ -284,12 +305,23 @@ function updateReflection(sr, ir) {
     reflMidCtx.drawImage(reflMid, x0, 0, 1, mh, 0, 0, x0, mh);
     reflMidCtx.drawImage(reflMid, x0 + sw - 1, 0, 1, mh, x0 + sw, 0, x0, mh);
   }
+
+  /* Three focus levels: sharp -> medium -> heavy */
+  reflBlurTo(reflSharp, reflMid, rw, rh, 1);
+  reflBlurTo(reflMed, reflSharp, rw, rh, .3);
+  reflBlurTo(reflHeavy, reflMed, rw, rh, .3);
+
   reflCtx.globalCompositeOperation = 'source-over';
   reflCtx.clearRect(0, 0, rw, rh);
-  reflCtx.drawImage(reflMid, 0, 0, rw, rh);
-  reflCtx.globalCompositeOperation = 'destination-in';             // fade out downward, and soften the left and right ends
+  reflCtx.drawImage(reflHeavy, 0, 0, rw, rh);                                   // far away: very soft
+  reflLayer(reflMed, rw, rh, [[0, 1], [.3, 1], [.75, 0]]);                      // middle: medium blur
+  reflLayer(reflSharp, rw, rh, [[0, 1], [.08, 1], [.4, 0]]);                    // right under the image: sharp
+
+  /* Brightness: strong near the image, falling off to black */
+  reflCtx.globalCompositeOperation = 'destination-in';
   let g = reflCtx.createLinearGradient(0, 0, 0, rh);
-  g.addColorStop(0, 'rgba(0,0,0,.75)'); g.addColorStop(.2, 'rgba(0,0,0,.4)'); g.addColorStop(.5, 'rgba(0,0,0,.14)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  g.addColorStop(0, 'rgba(0,0,0,.92)'); g.addColorStop(.12, 'rgba(0,0,0,.7)'); g.addColorStop(.35, 'rgba(0,0,0,.34)');
+  g.addColorStop(.65, 'rgba(0,0,0,.1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
   reflCtx.fillStyle = g; reflCtx.fillRect(0, 0, rw, rh);
   // Soft ends: the fade-to-dark happens in the side margins, so the reflection is at (almost) full strength across the whole image width.
   const e = Math.min(.45, (padPx / W) * 1.3);
