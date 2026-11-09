@@ -36,37 +36,54 @@
     display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
   .site-name { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); text-decoration: none; font-size: var(--site-type); line-height: 24px;
     letter-spacing: -.025em; font-weight: 500; white-space: nowrap; }
-  .main-nav { margin-left: auto; display: flex; align-items: center; gap: .5em; text-transform: lowercase; }
+  .menu { position: relative; margin-left: auto; display: flex; align-items: center; height: 24px; }
+  .main-nav { display: flex; align-items: center; gap: .5em; text-transform: lowercase; visibility: hidden; height: 24px; }   /* hidden until the + opens it */
+  .menu-btn { --plus: calc(var(--site-type) * .95); flex: none; position: relative; width: 24px; height: 24px; margin-right: 5px; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; will-change: transform; transform-origin: 50% 50%;
+    filter: drop-shadow(0 0 6px rgba(var(--ambilight-rgb), .75)) drop-shadow(0 0 15px rgba(var(--ambilight-rgb), .47)); }
+  .menu-btn .pulse { display: block; width: var(--plus); height: var(--plus); animation: plusPulse 2.8s ease-in-out infinite; }   /* slow breathing while the + is stopped */
+  .menu-btn svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; transition: transform .35s cubic-bezier(.3, .7, .2, 1); }
+  .menu-btn.is-x svg { transform: rotate(45deg); }   /* open and stopped: the + turns into an x */
+  .menu-btn.rolling .pulse { animation: none; }
+  @keyframes plusPulse { 0%, 100% { opacity: .55; transform: scale(.96); filter: drop-shadow(0 0 0 rgba(var(--ink-rgb), 0)); }
+                         50% { opacity: 1; transform: scale(1.04); filter: drop-shadow(0 0 5px rgba(var(--ink-rgb), .7)); } }
+  /* Same marching-ants line as the name and the items, under the x once it has stopped */
+  .menu-btn::after { content: ""; position: absolute; left: calc((24px - var(--plus)) / 2); right: calc((24px - var(--plus)) / 2); bottom: -2px; height: 1px; pointer-events: none; opacity: 0; transition: opacity .25s;
+    background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
+    background-size: 8px 1px; animation: ants 0.7s linear infinite; }
+  .menu-btn.is-x::after { opacity: 1; }
+  .menu-btn:hover { opacity: .55; }
+  .menu-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .main-nav a { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); text-decoration: none; font-size: var(--site-type); line-height: 24px;
     letter-spacing: -.025em; font-weight: 400; white-space: nowrap; }
   .main-nav a:hover, .main-nav a[aria-current="page"] { opacity: .55; }
   /* "Marching ants" line under the site name and every menu word, like a selection outline in Photoshop */
-  .site-name, .main-nav a { position: relative; display: inline-block; }
+  .site-name, .main-nav a { position: relative; display: inline-block; height: 24px; line-height: 24px; }   /* same box = same underline height for the name and every item */
   .site-name::after, .main-nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; pointer-events: none;
     background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
     background-size: 8px 1px; animation: ants 0.7s linear infinite; }
   @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
   /* Same marching-ants line under the footer icons */
-  .social-links > div { position: relative; display: flex; align-items: center; gap: 4px; }
-  .social-links > div::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 4.5px); height: 1px; pointer-events: none;   /* centered in the 10px gap between icons and ©2026 */
+  .social-links > div { position: relative; display: flex; align-items: center; gap: 3px; height: 14px; }
+  .social-links > div::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 5px); height: 1px; pointer-events: none;   /* 5px below the icons and 5px above ©2026 */
     background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
     background-size: 8px 1px; animation: ants 0.7s linear infinite; }
   .site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
   .copyright { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); }
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
     display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-end;
-    padding: 6px var(--m) 0;
+    padding: 9px var(--m) 0;
     background: transparent; }
   .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
-  .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 10px; }
+  .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 11px; }   /* 11px = 5px to the line + 1px line + 5px to the year */
   .social-stack { transform: none; }
   .social-links { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-  .social-links a { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
+  .social-links a { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center;
     color: var(--ink); text-decoration: none; filter: drop-shadow(0 0 6px rgba(var(--ambilight-rgb), .75)) drop-shadow(0 0 15px rgba(var(--ambilight-rgb), .47)); }
   .social-links a:hover { opacity: .55; }
-  .social-links svg { width: 17px; height: 17px; display: block; fill: none; stroke: currentColor; stroke-width: 1.6;
+  .social-links svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 1.6;
     stroke-linecap: round; stroke-linejoin: round; }
-  .social-links .x-mark { width: 15px; height: 15px; fill: currentColor; stroke: none; opacity: .78; }
+  .social-links .x-mark { width: 10.5px; height: 10.5px; fill: currentColor; stroke: none; opacity: .78; }
   .stage { overflow: hidden; }
   .stage.section-mode canvas { box-shadow: none; cursor: default; }
   .content-frame { position: fixed; z-index: 2; top: var(--header-h); left: 0; right: 0;
@@ -78,12 +95,12 @@
   .section-placeholder h1 { font-size: var(--site-type); font-weight: 400; letter-spacing: -.025em; }
   @media (max-width: 700px) {
     :root { --m: 12px; --site-type: 1rem; }
-    .main-nav { gap: .5em; }
+    .main-nav { gap: .4em; }
     .site-footer { }
     .copyright { font-size: 8px; }
     .social-links { gap: 7px; }
   }
-  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn { transition: none; } .site-name::after, .main-nav a::after, .social-links > div::after { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn { transition: none; } .site-name::after, .main-nav a::after, .social-links > div::after, .menu-btn::after, .menu-btn .pulse { animation: none; } }
 </style>
 </head>
 <body>
@@ -93,15 +110,22 @@
 
 <header class="site-header">
   <a class="site-name" href="#home" id="homeLink">Demma Guciàn</a>
-  <nav class="main-nav" aria-label="Main navigation">
-    <a href="#portraits" id="portraitsLink">Portraits</a>
-    <a href="#writing" id="writingLink">Writing</a>
-    <a href="#me" id="meLink">Me</a>
-  </nav>
+  <div class="menu" id="menu">
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mainNav">
+      <span class="pulse"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M2 12h20"/></svg></span>
+    </button>
+    <nav class="main-nav" id="mainNav" aria-label="Main navigation">
+      <a href="#portraits" id="portraitsLink">Portraits</a>
+      <a href="#writing" id="writingLink">Writing</a>
+      <a href="#process" id="processLink">Process</a>
+      <a href="#me" id="meLink">Me</a>
+    </nav>
+  </div>
 </header>
 <main class="content-frame" id="contentFrame" aria-label="Selected section">
   <iframe id="externalPage" title="Demma Guciàn on Verse" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
   <section class="section-placeholder" id="writingPanel" hidden><h1>Writing</h1></section>
+  <section class="section-placeholder" id="processPanel" hidden><h1>Process</h1></section>
   <section class="section-placeholder" id="mePanel" hidden><h1>Me</h1></section>
 </main>
 <footer class="site-footer">
@@ -287,8 +311,18 @@ function reflLayer(src, w, h, stops) {
 const skirtCanvas = document.createElement('canvas'); skirtCanvas.className = 'reflection'; skirtCanvas.setAttribute('aria-hidden', 'true');
 document.getElementById('home').insertBefore(skirtCanvas, reflCanvas);
 const skirtCtx = skirtCanvas.getContext('2d'), skTiny = mk(), skTinyCtx = skTiny.getContext('2d');
-const SKIRT_W = 96, SKIRT_SPREAD = .6, SKIRT_OPACITY = .32;   // SKIRT_SPREAD: how far it reaches past each side (fraction of the image width)
-const skMask = mk();
+const SKIRT_W = 192, SKIRT_SPREAD = .6, SKIRT_OPACITY = .4;   // SKIRT_SPREAD: how far it reaches past each side (fraction of the image width)
+const skMask = mk(), skTex = mk(); let skTexKey = '';
+/* Floor texture for the skirt (same family as the reflection's): long horizontal streaks plus fine grain, fixed, so the glow reads as light ON a surface and not as fog in the air */
+function buildSkTex(sw, sh) {
+  skTex.width = sw; skTex.height = sh;
+  const c = skTex.getContext('2d'), id = c.createImageData(sw, sh), d = id.data;
+  for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++) {
+    const v = .45 * vnoise(x * .025, y * .5) + .25 * vnoise(x * .07, y * .18) + .3 * vnoise(x * .35, y * .8);
+    d[(y * sw + x) * 4 + 3] = Math.max(0, Math.min(1, .1 + 1.3 * v)) * 255;
+  }
+  c.putImageData(id, 0, 0); skTexKey = sw + 'x' + sh;
+}
 function updateSkirt(sr, ir, h) {
   /* The skirt is an elliptical pool of light on the floor, centered a little below the screen's base line: its top is rounded and only
      reaches the base line faintly, so it grows out of the floor around the reflection instead of starting at the image's sides */
@@ -327,6 +361,8 @@ function updateSkirt(sr, ir, h) {
     mc.fillStyle = g; mc.fillRect(-sw / 2, -sw, sw, 2 * sw); mc.restore();
   });
   skirtCtx.globalCompositeOperation = 'destination-in'; skirtCtx.drawImage(skMask, 0, 0);
+  if (skTexKey !== sw + 'x' + sh) buildSkTex(sw, sh);
+  skirtCtx.drawImage(skTex, 0, 0);                                                                         // floor texture breaks up the glow
   skirtCtx.globalCompositeOperation = 'source-over';
 }
 
@@ -871,6 +907,7 @@ function showSection(section) {
   home.classList.toggle('section-mode', active);
   contentFrame.classList.toggle('open', active);
   document.getElementById('writingPanel').hidden = section !== 'writing';
+  document.getElementById('processPanel').hidden = section !== 'process';
   document.getElementById('mePanel').hidden = section !== 'me';
   externalPage.style.display = section === 'portraits' ? 'block' : 'none';
   if (section === 'portraits' && !artworksLoaded) { externalPage.src = ARTWORKS_URL; artworksLoaded = true; }
@@ -887,6 +924,7 @@ function showSection(section) {
 document.getElementById('homeLink').addEventListener('click', e => { e.preventDefault(); showSection(null); });
 document.getElementById('portraitsLink').addEventListener('click', e => { e.preventDefault(); showSection('portraits'); });
 document.getElementById('writingLink').addEventListener('click', e => { e.preventDefault(); showSection('writing'); });
+document.getElementById('processLink').addEventListener('click', e => { e.preventDefault(); showSection('process'); });
 document.getElementById('meLink').addEventListener('click', e => { e.preventDefault(); showSection('me'); });
 document.querySelectorAll('.social-links a[data-link]').forEach(a => {
   const destination = SITE_LINKS[a.dataset.link];
@@ -898,6 +936,51 @@ if ('ResizeObserver' in window) new ResizeObserver(() => {
   if (!imgA) return; setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
   if (phase === 'dissolve') makeBlend(); draw(lastQ);
 }).observe(document.getElementById('home'));
+
+/* ===== Menu: a + that rolls like a square wheel, step by step ===== */
+/* Closed: the + sits at the right end. Opening: it rolls left in 90-degree steps (one step = its own width), and the items appear in its wake.
+   It ends at the left of the row, stays open for autoCloseMs, then rolls back to the right and hides the items again. */
+const MENU = { stepMs: 95, holdMs: 25, autoCloseMs: 10000 };   // stepMs: one roll. holdMs: short pause between rolls. autoCloseMs: how long the items stay open
+const menuBtn = document.getElementById('menuBtn'), navEl = document.getElementById('mainNav');
+const menuReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let mP = 0, mTarget = 0, mDist = 1, mSize = 24, mGap = 10, mAnim = 0, mTimer = 0;   // mP: progress 0 (closed) to 1 (open)
+const mEase = u => u * u * (3 - 2 * u);
+function menuMeasure() {
+  mSize = menuBtn.offsetWidth || 24; mGap = parseFloat(getComputedStyle(menuBtn).marginRight) || 0;
+  mDist = navEl.offsetWidth + mGap;                       // how far the + travels: the width of the items row
+}
+function menuSteps() { return Math.max(1, Math.round(mDist / mSize)); }
+function menuDraw(p) {
+  const N = menuSteps(), step = mDist / N, n = Math.min(N, p * N), i = Math.min(N - 1, Math.floor(n)), u = n - i;
+  const hold = MENU.holdMs / (MENU.stepMs + MENU.holdMs), m = u < 1 - hold ? mEase(u / (1 - hold)) : 1;
+  const k = p >= 1 ? N : i + m, pos = k * step, lift = p >= 1 ? 0 : Math.sin(Math.PI * m) * mSize * .2;   // lift: the bump of a square pivoting on its corner
+  menuBtn.style.transform = `translate(${mDist - pos}px, ${-lift}px) rotate(${p >= 1 ? 0 : -90 * k}deg)`;
+  navEl.style.clipPath = `inset(-8px 0 -8px ${Math.max(0, mDist - pos - mGap)}px)`;                      // items show only to the right of the wheel
+}
+function menuRun(target, done) {
+  cancelAnimationFrame(mAnim); mTarget = target;
+  const from = mP, total = menuSteps() * (MENU.stepMs + MENU.holdMs) * Math.abs(target - from), t0 = performance.now();
+  if (menuReduce || !total) { mP = target; menuDraw(mP); if (done) done(); return; }
+  menuBtn.classList.add('rolling');                          // the pulse rests while it rolls
+  const tick = now => {
+    const u = Math.min(1, (now - t0) / total); mP = from + (target - from) * u; menuDraw(mP);
+    if (u < 1) mAnim = requestAnimationFrame(tick); else { menuBtn.classList.remove('rolling'); if (done) done(); }
+  };
+  mAnim = requestAnimationFrame(tick);
+}
+function menuOpen() {
+  clearTimeout(mTimer); menuMeasure();
+  navEl.style.visibility = 'visible'; menuBtn.setAttribute('aria-expanded', 'true');
+  menuRun(1, () => { menuBtn.classList.add('is-x'); mTimer = setTimeout(menuClose, MENU.autoCloseMs); });
+}
+function menuClose() {
+  clearTimeout(mTimer); menuBtn.classList.remove('is-x'); menuBtn.setAttribute('aria-expanded', 'false');
+  menuRun(0, () => { navEl.style.visibility = 'hidden'; });
+}
+menuBtn.addEventListener('click', () => { if (mTarget === 1) menuClose(); else menuOpen(); });
+addEventListener('resize', () => { menuMeasure(); menuDraw(mP); });
+menuMeasure(); menuDraw(0);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { menuMeasure(); menuDraw(mP); });
 </script>
 </body>
 </html>
