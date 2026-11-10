@@ -4,10 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Demma Guciàn</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Arimo:wght@400&display=swap">
 <style>
+  /* Self-hosted font (lives in the repo, so Android always gets it): put Arimo.ttf in a folder called "fonts" next to index.html */
+  @font-face { font-family: "Arimo"; src: local("Arimo"), url("fonts/Arimo.ttf") format("truetype"); font-weight: 400 700; font-style: normal; font-display: swap; }
   :root {
     color-scheme: dark;
     --ink: #f8e3b5;
@@ -511,7 +510,7 @@ let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
 
 /* The canvas always takes the proportions of the image and fits inside the window with a margin */
 const HOME_SCALE = { portrait: .82, landscape: .86 };
-const PHONE_PORTRAIT_LIFT = .20;   // phone held upright only: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
+const PHONE_PORTRAIT_LIFT = .10;   // phone and iPad held upright: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
 let aspect = 3 / 4;
 function setBox() {
   const stage = document.getElementById('home');
@@ -531,7 +530,7 @@ function setBox() {
   cv.style.aspectRatio = aspect;
   cv.style.height = 'auto';
   cv.style.width = `${Math.min(w, h * aspect)}px`;
-  const phoneUpright = !sectionMode && window.matchMedia('(orientation: portrait) and (max-width: 700px)').matches;
+  const phoneUpright = !sectionMode && window.matchMedia('(orientation: portrait) and (max-width: 1100px)').matches;
   cv.style.position = 'relative';
   cv.style.top = phoneUpright ? `${-Math.min(w, h * aspect) / aspect * PHONE_PORTRAIT_LIFT}px` : '0px';   // top (not transform) so the zoom effect keeps working; reflection and glow read the canvas position
 }
