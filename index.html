@@ -106,11 +106,18 @@
   .site-header, .site-footer, .caption { display: none !important; }
   .stage canvas.reflection, .stage canvas.ambilight { display: none !important; }
   #c, .stage.section-mode #c { box-shadow: none !important; }
+  /* ---- live address under the image: same type as the site (Helvetica, tight tracking, ink color, soft glow) ---- */
+  .addr { position: fixed; z-index: 3; left: 0; top: 0; transform: translateX(-50%); color: var(--ink);
+    text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38);
+    font-weight: 400; letter-spacing: -.025em; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums;
+    pointer-events: none; opacity: .92; }
+  .stage.section-mode ~ .addr { display: none; }
 </style>
 </head>
 <body>
 
 <div class="stage" id="home"><canvas class="ambilight" id="ambilight" aria-hidden="true"></canvas><canvas class="reflection" id="reflection" aria-hidden="true"></canvas><canvas id="c"></canvas></div>
+<div class="addr" id="addr" aria-hidden="true"></div>
 <div class="caption"><span id="capTitle"></span> <span class="cap-num"><span id="nA"></span><span id="nB"></span></span></div>
 
 <header class="site-header">
@@ -792,8 +799,44 @@ async function jump() {
   phase = 'hold'; t0 = performance.now();
 }
 
+/* ===== Freeze: right click (mouse) or touch (touch screen) holds the exact state. It lets go on the next click, when the touch is released, or by itself after 7.5 s ===== */
+const FREEZE_MS = 7500;
+let frozen = false, frozenBy = '', freezeUntil = 0;
+function freeze(by) { if (frozen) return; frozen = true; frozenBy = by; freezeUntil = performance.now() + FREEZE_MS; }
+function unfreeze() { if (!frozen) return; frozen = false; lastNow = performance.now(); }
+
+/* ===== Live address: an abbreviated made-up wallet address derived from the seed, the transition number and the loop position; it churns while you hover ===== */
+const addrEl = document.getElementById('addr'), HEX = '0123456789abcdef';
+let addrLast = '';
+function renderAddr() {
+  const base = (hash32(seed, tn) ^ Math.imul(tn + 1, 0x27d4eb2f)) >>> 0;
+  const q = Math.floor(effE * 6);
+  let a = '0x';
+  for (let i = 0; i < 40; i++) {
+    const step = Math.floor(prog * (4 + (i * 7) % 9)) + q * (1 + i % 3);   // each character ticks at its own pace
+    const h = hash32(base ^ Math.imul(i + 1, 0x9e3779b1), step + i * 131);
+    let c = HEX[h & 15];
+    if (c > '9' && ((h >>> 9) & 1)) c = c.toUpperCase();                   // mixed case, like a checksummed address
+    a += c;
+  }
+  a = a.slice(0, 6) + '\u2026' + a.slice(-4);                                // abbreviated: 0x7a3F…9B21
+  if (a !== addrLast) { addrEl.textContent = a; addrLast = a; }
+}
+function positionAddr() {
+  const r = cv.getBoundingClientRect(); if (r.width < 8) return;
+  const space = window.innerHeight - r.bottom;                              // free band under the image
+  const fs = Math.max(8, Math.min(10, space - 4));
+  addrEl.style.fontSize = fs + 'px';
+  addrEl.style.left = (r.left + r.width / 2) + 'px';
+  addrEl.style.top = (r.bottom + Math.max(2, Math.min(12, (space - fs) / 2))) + 'px';   // centered in that band
+}
+
 function frame(now) {
   const dt = Math.min(now - lastNow, 50); lastNow = now;
+  if (frozen) {
+    if (performance.now() >= freezeUntil) unfreeze();
+    else { t0 += dt; if (heldHas) heldAt += dt; mouse.last += dt; requestAnimationFrame(frame); return; }   // time stands still
+  }
   const RC = CONFIG.react;
   if (heldHas && CONFIG.selectionHoldMs && performance.now() - heldAt > CONFIG.selectionHoldMs) releaseHeld();   // a lock lets go by itself
   if (CONFIG.hover) {
@@ -823,6 +866,7 @@ function frame(now) {
     else draw(heldHas && CONFIG.flashMs ? flash(prog) : CONFIG.ease ? prog * prog * (3 - 2 * prog) : prog);
   } else if (phase === 'hold' && (now - t0 >= CONFIG.holdMs || (RC.skipHold && effE > .3))) { phase = 'loading'; advance(); }
   if (fadeAt && phase !== 'dissolve') draw(lastQ);  // keep the unlock fade moving during a pause
+  renderAddr(); positionAddr();
   updateAmbilight(now);                         // soft color spill follows every image transition
   requestAnimationFrame(frame);
 }
@@ -838,13 +882,16 @@ async function start() {
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => {
   if (!imgA) return; setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
   if (phase === 'dissolve') makeBlend();
-  draw(lastQ); }, 60); });
+  draw(lastQ); positionAddr(); }, 60); });
 
 /* ===== Touch and mouse =====
    Moving, touching and the wheel make the image react. A click or tap selects an area of similar color and locks it (or jumps, see clickAction).
    Vertical swipes stay with the browser (pull to refresh works). */
 cv.addEventListener('pointerdown', e => {
+  if (frozen) { unfreeze(); if (e.pointerType === 'mouse') return; }       // a click while frozen only thaws
+  if (e.pointerType === 'mouse' && e.button === 2) { freeze('mouse'); return; }   // right click freezes
   if (e.button > 0) return;
+  if (e.pointerType !== 'mouse') freeze('touch');                          // touch freezes while the finger is down
   try { cv.setPointerCapture(e.pointerId); } catch (err) {}
   const now = performance.now();
   Object.assign(gest, { down: true, moved: false, sx: e.clientX, sy: e.clientY });
@@ -859,6 +906,7 @@ cv.addEventListener('pointermove', e => {
 function endPress(e, cancelled) {
   if (!gest.down) return;
   gest.down = false;
+  if (frozen && frozenBy === 'touch') unfreeze();
   if (!cancelled && !gest.moved) {
     if (document.body.classList.contains('menu-open')) return;
     onClick(e);
