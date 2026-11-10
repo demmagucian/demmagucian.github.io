@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Demma Guciàn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Arimo:wght@400&display=swap">
 <style>
   :root {
     color-scheme: dark;
@@ -18,7 +21,7 @@
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; background: #000; color: var(--ink);
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: "Helvetica Neue", Helvetica, "Arimo", Arial, sans-serif;   /* Apple devices use Helvetica Neue; Android has neither, so it gets Arimo (same shapes and widths as Helvetica/Arial) */
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   .stage { position: fixed; z-index: 1; inset: 0; display: flex; align-items: center; justify-content: center;
     background: #000; touch-action: none; overscroll-behavior: none; }
@@ -75,7 +78,7 @@
   .copyright { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); }
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
     display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-end;
-    padding: 9px var(--m) 0;
+    padding: 6px var(--m) 0;   /* was 9px: icons + line + ©2026 moved up 3px */
     background: transparent; }
   .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
   .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 11px; }   /* 11px = 5px to the line + 1px line + 5px to the year */
@@ -507,7 +510,8 @@ const fadeC = document.createElement('canvas'), fctx = fadeC.getContext('2d');  
 let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
 
 /* The canvas always takes the proportions of the image and fits inside the window with a margin */
-const HOME_SCALE = { portrait: .82, landscape: .86 };   // size of the home image: 1 = as before, .82 = 18% smaller
+const HOME_SCALE = { portrait: .82, landscape: .86 };
+const PHONE_PORTRAIT_LIFT = .20;   // phone held upright only: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
 let aspect = 3 / 4;
 function setBox() {
   const stage = document.getElementById('home');
@@ -527,6 +531,9 @@ function setBox() {
   cv.style.aspectRatio = aspect;
   cv.style.height = 'auto';
   cv.style.width = `${Math.min(w, h * aspect)}px`;
+  const phoneUpright = !sectionMode && window.matchMedia('(orientation: portrait) and (max-width: 700px)').matches;
+  cv.style.position = 'relative';
+  cv.style.top = phoneUpright ? `${-Math.min(w, h * aspect) / aspect * PHONE_PORTRAIT_LIFT}px` : '0px';   // top (not transform) so the zoom effect keeps working; reflection and glow read the canvas position
 }
 function applyAspect(im) {
   const a = (im.naturalWidth || im.width) / (im.naturalHeight || im.height);
