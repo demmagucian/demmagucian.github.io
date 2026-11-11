@@ -59,8 +59,8 @@
      it leans in and out smoothly, the width never changes (no layout shift) and the marching line underneath stays straight */
   .main-nav a .t { display: inline-block; transform-origin: 50% 75%; transform: skewX(0deg); will-change: transform; -webkit-text-stroke: 0px currentColor;
     transition: transform .7s cubic-bezier(.22, .61, .36, 1), -webkit-text-stroke-width .7s cubic-bezier(.22, .61, .36, 1); }
-  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .6px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
-  .main-nav a[aria-current="page"] { text-shadow: 0 0 3.5px rgba(var(--ambilight-rgb), .325), 0 0 10.5px rgba(var(--ambilight-rgb), .19); }
+  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .51px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
+  .main-nav a[aria-current="page"] { text-shadow: 0 0 3.5px rgba(var(--ambilight-rgb), .276), 0 0 10.5px rgba(var(--ambilight-rgb), .162); }
   /* "Marching ants" line under the site name and every menu word, like a selection outline in Photoshop */
   .site-name, .main-nav a { position: relative; display: inline-block; height: 24px; line-height: 24px; }   /* same box = same underline height for the name and every item */
   .site-name::after, .main-nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; pointer-events: none;
@@ -68,23 +68,27 @@
     background-size: 8px 1px; animation: ants 0.7s linear infinite; }
   @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
   /* Same marching-ants line under the footer icons */
-  .social-links > div { position: relative; display: flex; align-items: center; gap: 3px; height: 14px; }
-  .social-links > div::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 5px); height: 1px; pointer-events: none;   /* 5px below the icons and 5px above ©2026 */
+  .social-links > div, .theme-row { position: relative; display: flex; align-items: center; gap: 3px; height: 14px; }
+  .social-links > div::after, .theme-row::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 5px); height: 1px; pointer-events: none;   /* 5px below the icons and 5px above ©2026 */
     background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
     background-size: 8px 1px; animation: ants 0.7s linear infinite; }
   .site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
   .copyright { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); }
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
-    display: flex; flex-direction: row; align-items: flex-start; justify-content: flex-end;
+    display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;   /* theme button bottom-left, social icons bottom-right */
     padding: 6px var(--m) 0;   /* was 9px: icons + line + ©2026 moved up 3px */
     background: transparent; }
   .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
   .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 11px; }   /* 11px = 5px to the line + 1px line + 5px to the year */
   .social-stack { transform: none; }
   .social-links { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-  .social-links a { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center;
+  .social-links a, .theme-btn { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center;
     color: var(--ink); text-decoration: none; filter: drop-shadow(0 0 6px rgba(var(--ambilight-rgb), .75)) drop-shadow(0 0 15px rgba(var(--ambilight-rgb), .47)); }
   .social-links a:hover { opacity: .55; }
+  .theme-btn { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+  .theme-row { justify-content: center; height: 14px; }
+  .theme-btn svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 1.84; stroke-linecap: round; stroke-linejoin: round; }
+  .theme-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
   .social-links svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 1.84;
     stroke-linecap: round; stroke-linejoin: round; }
   .social-links .x-mark { width: 12.1px; height: 12.1px; fill: currentColor; stroke: none; opacity: .78; }
@@ -110,7 +114,9 @@
   @media (min-width: 701px) {
     .social-links { gap: 12px; }
     .social-links > div { gap: 3.6px; height: 16.8px; }
-    .social-links a { width: 16.8px; height: 16.8px; }
+    .social-links a, .theme-btn { width: 16.8px; height: 16.8px; }
+    .theme-row { height: 16.8px; }
+    .theme-btn svg { width: 14.4px; height: 14.4px; }
     .social-links svg { width: 14.4px; height: 14.4px; }
     .social-links .x-mark { width: 14.5px; height: 14.5px; }
     .copyright { font-size: 9.6px; line-height: 1; padding-bottom: 0; }   /* ©2026 also +20% (8px -> 9.6px) */
@@ -119,6 +125,28 @@
     .site-footer { align-items: flex-end; padding: 0 var(--m) var(--m); }
   }
   @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn, .social-links a { transition: none; } .site-name::after, .main-nav a::after { animation: none; } }
+
+  /* ===== Light mode: the gallery photo (room-light.jpg) behind the home, the artwork set inside its white panel ===== */
+  .room { position: absolute; inset: 0; z-index: 0; opacity: 0; overflow: hidden; pointer-events: none; }
+  .room-fill { position: absolute; inset: -8%; background: url("room-light.jpg") center / cover; filter: blur(30px); }   /* soft copy of the room fills the sides when the window is wider than the photo */
+  .room-img { position: absolute; max-width: none; -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent); -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent); mask-composite: intersect; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 1.2s; animation-timing-function: cubic-bezier(.45, 0, .2, 1); }   /* smooth crossfade of the whole page */
+  html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .room, html.theme-fade .site-header *, html.theme-fade .site-footer * {
+    transition: background-color 1.2s ease, color 1.2s ease, box-shadow 1.2s ease, opacity 1.2s ease, text-shadow 1.2s ease !important; }   /* fallback when the browser has no view transitions */
+  .room.missing .room-panel { display: none; }   /* photo not found: no white frame, just the plain wall tone */
+  .room-panel { position: absolute; background: #fcfbff; }   /* white canvas exactly around the artwork; it covers (and where needed extends) the photo's own panel */
+  html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32; }
+  html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #e4dfd8; }   /* the sections fade to the wall tone instead of black */
+  html[data-theme="light"] .site-name::after, html[data-theme="light"] .main-nav a::after, html[data-theme="light"] .social-links > div::after, html[data-theme="light"] .theme-row::after {
+    background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .9) 0 4px, transparent 4px 8px); background-size: 8px 1px; }   /* clean dashes: no tinted gaps on the wall */
+  html[data-theme="light"] .room { opacity: 1; }
+  html[data-theme="light"] #c { background: transparent; box-shadow: 0 0 14px 1px rgba(var(--ambilight-rgb), .42), 0 0 46px 6px rgba(var(--ambilight-rgb), .22); }   /* halo: the artwork's live color spilling over the white panel */
+  html[data-theme="light"] .stage canvas.ambilight { opacity: .5; mix-blend-mode: screen; }                        /* the same colors bleeding past the panel onto the wall */
+  html[data-theme="light"] .stage canvas.reflection { mix-blend-mode: normal; opacity: .6; }                       /* reflection + skirt on the polished floor: normal blend so they show on any floor tone */
+  html[data-theme="light"] .site-name, html[data-theme="light"] .main-nav a, html[data-theme="light"] .copyright { text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .3), 0 0 21px rgba(var(--ambilight-rgb), .18); }
+  html[data-theme="light"] .main-nav a[aria-current="page"] { text-shadow: 0 0 3.5px rgba(var(--ambilight-rgb), .14), 0 0 10.5px rgba(var(--ambilight-rgb), .08); }
+  html[data-theme="light"] .menu-btn, html[data-theme="light"] .social-links a, html[data-theme="light"] .theme-btn { filter: drop-shadow(0 0 6px rgba(var(--ambilight-rgb), .35)) drop-shadow(0 0 15px rgba(var(--ambilight-rgb), .2)); }
 </style>
 </head>
 <body>
@@ -147,6 +175,10 @@
   <section class="section-placeholder" id="mePanel" hidden><h1>Me</h1></section>
 </main>
 <footer class="site-footer">
+  <div class="social-stack theme-stack">
+    <div class="theme-row"><button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to light mode" title="Switch to light mode"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
+    <span class="copyright" id="themeLabel">dark</span>
+  </div>
   <div class="social-stack">
   <div class="social-links" aria-label="Social links">
     <div>
@@ -167,6 +199,7 @@
 <script>
 /* ===== SETTINGS: edit this block only. ===== */
 const CONFIG = {
+  theme: 'auto',   // 'auto' follows the device (light or dark), or force 'light' / 'dark'. Also works in the address: ?theme=light
   // Home-section image set. Each item has a title and a folder holding images named 001.jpg, 002.jpg ... (lowercase .jpg).
   // To add another home image set, copy the whole { ... } block and add a comma between them.
   portraits: [
@@ -425,12 +458,13 @@ function updateReflection(sr, ir) {
   if (reflCanvas.width !== rw || reflCanvas.height !== rh) { reflCanvas.width = rw; reflCanvas.height = rh; }
   const mw = rw * 2, mh = rh * 2, x0 = padT * 2, sw = mw - 2 * x0;   // sw: the image width, in mid-canvas pixels
   if (reflMid.width !== mw || reflMid.height !== mh) { reflMid.width = mw; reflMid.height = mh; }
-  const frac = Math.min(1, h / ir.height);
+  const gapF = Math.min(.4, (ir.gap || 0) / h), gy = Math.round(gapF * mh), frac = Math.min(1, h * (1 - gapF) / ir.height);   // gap: light mode, the white margin between the artwork and the foot of the panel is reflected too, so the reflection starts right where the panel ends
   reflMidCtx.save();
   reflMidCtx.clearRect(0, 0, mw, mh);
   reflMidCtx.translate(0, mh); reflMidCtx.scale(1, -1);            // mirror the bottom strip of the image
-  reflMidCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, x0, 0, sw, mh);
+  reflMidCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, x0, 0, sw, mh - gy);
   reflMidCtx.restore();
+  if (gy > 0) { reflMidCtx.fillStyle = '#fcfbff'; reflMidCtx.fillRect(x0, 0, sw, gy); }
   if (x0 > 0) {                                                    // continue the outermost pixel columns into the side margins
     reflMidCtx.drawImage(reflMid, x0, 0, 1, mh, 0, 0, x0, mh);
     reflMidCtx.drawImage(reflMid, x0 + sw - 1, 0, 1, mh, x0 + sw, 0, x0, mh);
@@ -481,7 +515,7 @@ function updateAmbilight(now) {
   midCtx.drawImage(cv, (ir.left - sr.left) * kx3, (ir.top - sr.top) * ky3, ir.width * kx3, ir.height * ky3);
   glowCtx.clearRect(0, 0, gw, gh);
   glowCtx.drawImage(midCanvas, 0, 0, gw, gh);
-  updateReflection(sr, ir);
+  updateReflection(sr, isLight && lightBox ? { left: ir.left, width: ir.width, height: ir.height, bottom: sr.top + lightBox.bottom, gap: lightBox.gap } : ir);
 
   // The same live image colors also illuminate the white interface typography and icons.
   // Keep the sampling small and guarded so cross-origin image settings cannot break the animation.
@@ -525,6 +559,46 @@ let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
 const HOME_SCALE = { portrait: .82, landscape: .86 };
 const PHONE_PORTRAIT_LIFT = .10;   // phone and iPad held upright: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
 let aspect = 3 / 4;
+/* ===== Light mode ===== */
+const LIGHT = { w: 1086, h: 1448, panel: [280, 192, 804, 1048], matte: .045, top: .34, maxW: .86, maxH: .66 };   // panel = the white canvas in the photo (pixels); matte = white margin around the artwork; maxH leaves floor below for the reflection
+let themePref;
+const themeQ = matchMedia('(prefers-color-scheme: light)'), themePrefInit = new URLSearchParams(location.search).get('theme') || (() => { try { return localStorage.getItem('theme'); } catch (e) { return null; } })() || CONFIG.theme || 'auto';
+const roomEl = document.createElement('div'); roomEl.className = 'room';
+roomEl.innerHTML = '<div class="room-fill"></div><img class="room-img" alt="" src="room-light.jpg"><div class="room-panel"></div>';
+document.getElementById('home').insertBefore(roomEl, document.getElementById('home').firstChild);
+const roomImg = roomEl.querySelector('.room-img'), roomPanel = roomEl.querySelector('.room-panel');
+roomImg.addEventListener('error', () => roomEl.classList.add('missing'));   // room-light.jpg is not next to index.html
+let isLight = false, lightBox = null;
+themePref = themePrefInit;
+const themeBtn = document.getElementById('themeBtn'), themeLabel = document.getElementById('themeLabel');
+function applyTheme() {
+  isLight = themePref === 'light' || (themePref === 'auto' && themeQ.matches);
+  document.documentElement.dataset.theme = isLight ? 'light' : 'dark';
+  if (!isLight) { lightBox = null; cv.style.left = ''; }
+  themeLabel.textContent = isLight ? 'light' : 'dark';                       // shows the current mode; the button switches to the other
+  const to = isLight ? 'dark' : 'light'; themeBtn.setAttribute('aria-label', `Switch to ${to} mode`); themeBtn.title = `Switch to ${to} mode`;
+}
+applyTheme();
+const refreshTheme = () => { applyTheme(); if (imgA) { setBox(); size(); A = fit(imgA); draw(lastQ); } };
+themeQ.addEventListener('change', refreshTheme);
+themeBtn.addEventListener('click', () => {
+  themePref = isLight ? 'dark' : 'light';
+  try { localStorage.setItem('theme', themePref); } catch (e) {}
+  const go = () => { refreshTheme(); lastGlowUpdate = 0; };
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(go);
+  else { const r = document.documentElement; r.classList.add('theme-fade'); go(); setTimeout(() => r.classList.remove('theme-fade'), 1400); }
+});
+function layoutRoom() {                                     // the artwork keeps exactly its dark-mode size and place; the room photo is scaled and moved around it
+  const [x0, y0, x1, y1] = LIGHT.panel, pw = x1 - x0, ph = y1 - y0;
+  const aw = cv.offsetWidth, ah = cv.offsetHeight, L = cv.offsetLeft, T = cv.offsetTop;
+  if (!aw || !ah) return;
+  const m = aw * LIGHT.matte, RW = aw + 2 * m, RH = ah + m;                          // white canvas = artwork + margin on the sides and top; no margin at the foot, so the artwork stands on the floor and its reflection starts right at its bottom edge
+  const s = Math.min(RW / pw, RH / ph), bottom = T + ah, cx = L + aw / 2;       // largest photo scale whose own panel still fits inside the white canvas
+  roomPanel.style.left = (L - m) + 'px'; roomPanel.style.top = (T - m) + 'px'; roomPanel.style.width = RW + 'px'; roomPanel.style.height = RH + 'px';
+  roomImg.style.width = LIGHT.w * s + 'px'; roomImg.style.height = LIGHT.h * s + 'px';
+  roomImg.style.left = (cx - (x0 + pw / 2) * s) + 'px'; roomImg.style.top = (bottom - y1 * s) + 'px';   // photo panel centered on the artwork, its foot on the white canvas's foot (floor contact)
+  lightBox = { bottom, gap: 0 };                                      // the reflection starts at the foot of the panel
+}
 function setBox() {
   const stage = document.getElementById('home');
   const margin = Math.max(12, Math.min(24, window.innerWidth * .02));
@@ -545,7 +619,17 @@ function setBox() {
   cv.style.width = `${Math.min(w, h * aspect)}px`;
   const phoneUpright = !sectionMode && window.matchMedia('(orientation: portrait) and (max-width: 1100px)').matches;
   cv.style.position = 'relative';
-  cv.style.top = phoneUpright ? `${-Math.min(w, h * aspect) / aspect * PHONE_PORTRAIT_LIFT}px` : '0px';   // top (not transform) so the zoom effect keeps working; reflection and glow read the canvas position
+  cv.style.top = '0px';                                       // top (not transform) so the zoom effect keeps working; reflection and glow read the canvas position
+  if (phoneUpright) {
+    /* Upper limit for the image top: the gap from the image top to the marching line under the menu words equals the gap from the menu words to the top of the page.
+       Words box top = d, box height 24px, line 2px below it -> limit = d + 26 + d = header height + 2px. The lift never takes the image above that limit
+       (and an image that would start above it is pushed down to it). */
+    const natTop = cv.offsetTop;                              // layout top with no lift (the stage starts at the top of the viewport)
+    const limit = document.querySelector('.site-header').offsetHeight + 2;
+    const lift = Math.min(w, h * aspect) / aspect * PHONE_PORTRAIT_LIFT;
+    cv.style.top = `${Math.max(-lift, limit - natTop)}px`;
+  }
+  if (isLight) layoutRoom();
 }
 function applyAspect(im) {
   const a = (im.naturalWidth || im.width) / (im.naturalHeight || im.height);
