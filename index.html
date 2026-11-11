@@ -48,9 +48,7 @@
   .menu-btn .flip { display: block; width: var(--plus); height: var(--plus); will-change: transform; transform-origin: 50% 50%; }   /* carries the page turn; the "home" word stays outside it */
   .menu-btn .pulse { display: block; width: var(--plus); height: var(--plus); will-change: transform, opacity; }   /* the breathing of the + is driven from the script, so it never jumps */
   .menu-btn svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; overflow: visible; transition: opacity .45s ease; }
-  .menu-btn .h { transform-box: fill-box; transform-origin: center; transition: transform .18s cubic-bezier(.2,.7,.25,1); }
-  .menu-btn.is-dot .h { transform: scaleX(.08); }
-  /* The minus remains visible and rotating while a section is selected. */
+  /* The minus stays still (no rotation) while a section is selected. */
   .main-nav.has-selection a:not([aria-current="page"])::after { animation-play-state: paused; }
   .menu-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .main-nav a { color: var(--ink); text-shadow: 0 0 7px rgba(var(--ambilight-rgb), .65), 0 0 21px rgba(var(--ambilight-rgb), .38); text-decoration: none; font-size: var(--site-type); line-height: 24px;
@@ -61,7 +59,7 @@
      it leans in and out smoothly, the width never changes (no layout shift) and the marching line underneath stays straight */
   .main-nav a .t { display: inline-block; transform-origin: 50% 75%; transform: skewX(0deg); will-change: transform; -webkit-text-stroke: 0px currentColor;
     transition: transform .7s cubic-bezier(.22, .61, .36, 1), -webkit-text-stroke-width .7s cubic-bezier(.22, .61, .36, 1); }
-  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); font-weight: 400; -webkit-text-stroke-width: .6px; }   /* selected: lighter than the unselected labels */
+  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .6px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
   .main-nav a[aria-current="page"] { text-shadow: 0 0 3.5px rgba(var(--ambilight-rgb), .325), 0 0 10.5px rgba(var(--ambilight-rgb), .19); }
   /* "Marching ants" line under the site name and every menu word, like a selection outline in Photoshop */
   .site-name, .main-nav a { position: relative; display: inline-block; height: 24px; line-height: 24px; }   /* same box = same underline height for the name and every item */
@@ -94,7 +92,7 @@
   .stage.section-mode { opacity: 0; pointer-events: none; }   /* an item is selected: the home image, reflection and glow fade out to black; they fade back in with "home" */
   .content-frame { position: fixed; z-index: 2; top: var(--header-h); left: 0; right: 0;
     bottom: var(--footer-h); display: none; overflow: hidden;
-    background: #000; }
+    background: transparent; }   /* transparent on purpose: a black frame fading in over the fading image made the band between header and footer fade twice as fast as the strip under the header (the stripe). The stage alone now drives one even fade. */
   .content-frame.open { display: block; animation: sectionIn .8s ease both; }
   @keyframes sectionIn { from { opacity: 0; } to { opacity: 1; } }
   .content-frame iframe { display: none !important; }
@@ -107,6 +105,18 @@
     .site-footer { }
     .copyright { font-size: 8px; }
     .social-links { gap: 7px; }
+  }
+  /* Desktop and iPad (wider than the phone breakpoint): footer icon group and ©2026 20% bigger, anchored to the bottom-right corner. Phones keep the original sizes above. */
+  @media (min-width: 701px) {
+    .social-links { gap: 12px; }
+    .social-links > div { gap: 3.6px; height: 16.8px; }
+    .social-links a { width: 16.8px; height: 16.8px; }
+    .social-links svg { width: 14.4px; height: 14.4px; }
+    .social-links .x-mark { width: 14.5px; height: 14.5px; }
+    .copyright { font-size: 9.6px; line-height: 1; padding-bottom: 0; }   /* ©2026 also +20% (8px -> 9.6px) */
+    /* The icons + line + ©2026 group sits in the bottom-right corner with the same margin (--m) from the right edge and from the bottom
+       as the + has from the right and top, and as the name has from the left and top. Phones keep the original footer. */
+    .site-footer { align-items: flex-end; padding: 0 var(--m) var(--m); }
   }
   @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn, .social-links a { transition: none; } .site-name::after, .main-nav a::after { animation: none; } }
 </style>
@@ -932,7 +942,7 @@ function showSection(section) {
   document.getElementById('mainNav').classList.toggle('has-selection', !!document.querySelector('.main-nav a[aria-current]'));
   if (!section && mTarget === 1) menuClose();
 }
-document.getElementById('homeLink').addEventListener('click', e => { e.preventDefault(); if (mTarget === 1) closeAsDot(); else { showSection(null); nameCapTo(1, 500); } });
+document.getElementById('homeLink').addEventListener('click', e => { e.preventDefault(); if (mTarget === 1) closeMinus(); else { showSection(null); nameCapTo(1, 500); } });
 document.getElementById('portraitsLink').addEventListener('click', e => { e.preventDefault(); showSection('portraits'); });
 document.getElementById('writingLink').addEventListener('click', e => { e.preventDefault(); showSection('writing'); });
 document.getElementById('processLink').addEventListener('click', e => { e.preventDefault(); showSection('process'); });
@@ -951,13 +961,13 @@ if ('ResizeObserver' in window) new ResizeObserver(() => {
 
 /* ===== Menu: a + that turns like a book page ===== */
 /* Closed: the + sits at the right end and breathes. Opening: it travels straight to the left of the row while flipping like a page (the + is the front, the - is the back),
-   the items appear in its wake, and it lands as a - . When - or DG is clicked, the minus contracts into a centered dot before the page turns closed into +. */
+   the items appear in its wake, and it lands as a - . When - or DG is clicked, the minus turns closed into + directly (it never becomes a dot). */
 const MENU = { flipMs: 650, autoCloseMs: 10000, homePauseMs: 240 };   // flipMs: the whole page turn. autoCloseMs: time of the half turn of the - before it closes
 const menuBtn = document.getElementById('menuBtn'), navEl = document.getElementById('mainNav'), vBar = menuBtn.querySelector('.v');
 const flipEl = menuBtn.querySelector('.flip'), pulseEl = menuBtn.querySelector('.pulse'), glyphEl = menuBtn.querySelector('svg');
 const menuReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let mP = 0, mTarget = 0, mDist = 1, mGap = 10, mAnim = 0, mTimer = 0, mCount = 0;   // mP: progress 0 (closed) to 1 (open)
-let mTurn = 0, mRotFrom = 0, mRotTo = 0, mHome = false, mLeaving = false;            // mTurn: how far the - has turned (0-180); mHome: the - has become "home"
+let mTurn = 0, mHome = false, mLeaving = false;            // mTurn: auto-close countdown (0-180, no visual rotation); mHome: a section is selected
 const mEase = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 /* The name rests as "DG": "emma " and "uciàn" open from the left to the right as the page turns, and close the same way on the way back */
 const nameR = [...document.querySelectorAll('.site-name .nr')]; let nameW = [0, 0], nameE = 0;
@@ -990,23 +1000,22 @@ function menuMeasure() {
 }
 function menuDraw(p) {
   const e = mEase(p), pos = e * mDist, ang = 180 * e, flat = p <= 0 || p >= 1;
-  const rot = p >= 1 ? mTurn : mRotFrom + (mRotTo - mRotFrom) * (1 - p);   // turning on itself; on the way back it settles smoothly to the upright position
   setNameOpen(nameCap);
   menuBtn.style.transform = `translateX(${mDist - pos}px)`;
   flipEl.style.transform = flat ? 'none' : `perspective(260px) rotateY(${-ang}deg)`;
-  /* on the back side the glyph is mirrored by the turn; mirroring it back keeps the - sign's own turning and the start of the flip continuous (no jump at either end) */
-  glyphEl.style.transform = `${!flat && ang >= 90 ? 'scaleX(-1) ' : ''}rotate(${rot}deg)`;
+  /* on the back side the glyph is mirrored by the page turn; mirroring it back keeps the flip continuous (no jump at either end) */
+  glyphEl.style.transform = !flat && ang >= 90 ? 'scaleX(-1)' : 'none';
   vBar.style.visibility = ang < 90 ? 'visible' : 'hidden';   // past the half turn the back side shows: a - sign
   navEl.style.clipPath = `inset(-8px -8px -8px ${Math.max(0, mDist - pos - mGap)}px)`;   // items show only to the right of the page
 }
-/* The breathing of the closed +. It follows one clock and fades out/in with the page turn, so the + never restarts from the beginning of its loop. */
+/* The breathing of the + (closed) and of the - (open). It follows one clock through the page turn, so it never restarts from the beginning of its loop. */
 function pulseTick(now) {
-  const f = (1 + Math.cos(2 * Math.PI * now / 2800)) / 2;           // 1 = brightest, 0 = dimmest
-  const a = menuReduce ? 0 : 1 - mEase(mP);                           // 1 while closed, 0 while open
+  const f = (1 + Math.cos(2 * Math.PI * now / 3733)) / 2;           // 1 = brightest, 0 = dimmest
+  const a = menuReduce ? 0 : 1;                                       // always pulsing: + closed, - open, and through the page turn
   const g = 1 - a * (1 - f);
-  /* Keep the plus at its normal brightness; let its light bloom travel outward instead of dimming it. */
-  pulseEl.style.opacity = '1';
-  pulseEl.style.transform = `scale(${(.98 + .06 * g).toFixed(3)})`;
+  /* Wider breathing: the sign goes from a little darker (g = 0) to full brightness (g = 1), with a small size swing, and its glow follows. */
+  pulseEl.style.opacity = (.56 + .44 * g).toFixed(3);
+  pulseEl.style.transform = `scale(${(.98 + .05 * g).toFixed(3)})`;
   pulseEl.style.filter = `drop-shadow(0 0 ${(6 + 10 * g).toFixed(2)}px rgba(var(--ink-rgb), ${(.48 + .38 * g).toFixed(3)})) drop-shadow(0 0 ${(14 + 22 * g).toFixed(2)}px rgba(var(--ink-rgb), ${(.18 + .3 * g).toFixed(3)}))`;
   requestAnimationFrame(pulseTick);
 }
@@ -1020,22 +1029,21 @@ function menuRun(target, done) {
   };
   mAnim = requestAnimationFrame(tick);
 }
-function menuCountStart() {                                // the - makes its 180-degree turn, then closes as a straight minus
+function menuCountStart() {                                // the - waits (still) for autoCloseMs, then the menu closes
   if (mHome || mTarget !== 1) return;
-  menuBtn.classList.remove('is-dot');
   clearTimeout(mTimer); cancelAnimationFrame(mCount);
   if (menuReduce) { mTimer = setTimeout(menuClose, MENU.autoCloseMs); return; }
   const t0 = performance.now();
   const tick = now => {
     if (mHome || mTarget !== 1) return;
-    mTurn = 180 * Math.min(1, (now - t0) / MENU.autoCloseMs); menuDraw(mP);
+    mTurn = 180 * Math.min(1, (now - t0) / MENU.autoCloseMs);
     if (mTurn >= 180) menuClose(); else mCount = requestAnimationFrame(tick);
   };
   mCount = requestAnimationFrame(tick);
 }
 function menuOpen() {
   clearTimeout(mTimer); cancelAnimationFrame(mCount);
-  mHome = false; mLeaving = false; mTurn = mRotFrom = mRotTo = 0; menuBtn.classList.remove('home');
+  mHome = false; mLeaving = false; mTurn = 0; menuBtn.classList.remove('home');
   menuMeasure(); nameCapTo(0, 500);                       // hide the full name as + opens the menu
   navEl.style.visibility = 'visible'; menuBtn.setAttribute('aria-expanded', 'true');
   menuRun(1, menuCountStart);
@@ -1046,45 +1054,28 @@ function menuClose() {
   mHome = false; mLeaving = false;
   menuBtn.classList.remove('home'); menuBtn.setAttribute('aria-label', 'Menu');
   nameCapTo(1, 500);                                      // restore the full Demma Guciàn wordmark as - is pressed
-  mRotFrom = mTurn; mRotTo = mTurn > 180 ? 360 : 0;
   menuBtn.setAttribute('aria-expanded', 'false');
   menuRun(0, () => {
-    navEl.style.visibility = 'hidden'; mTurn = mRotFrom = mRotTo = 0;
+    navEl.style.visibility = 'hidden'; mTurn = 0;
     menuDraw(0);
-    // Keep the centered dot visible throughout the page turn; it expands into + only at the end.
-    menuBtn.classList.remove('is-dot');
   });
 }
-function closeAsDot() {
+function closeMinus() {                                    // the - stays a - while the page turns closed into +
   if (mTarget !== 1 || mLeaving) return;
   clearTimeout(mTimer); cancelAnimationFrame(mCount);
-  mHome = false; mLeaving = true;
-  menuBtn.classList.add('is-dot');
+  mHome = false; mTurn = 0;
   menuBtn.setAttribute('aria-label', 'Menu');
-  // The minus contracts around its center into a compact dot, then the page turn closes into +.
-  setTimeout(() => {
-    mLeaving = false;
-    mTurn = mRotFrom = mRotTo = 0;
-    showSection(null); // clear the selected section; the dot stays centered while the page closes into +
-  }, 190);
+  showSection(null);                                       // clears the selected section and calls menuClose()
 }
-function menuToHome() {                                    // section selected: keep the minus sign visible and rotating
+function menuToHome() {                                    // section selected: the minus stays visible, still, and the auto-close is cancelled
   if (mTarget !== 1) return;
   if (mLeaving) { clearTimeout(mTimer); mLeaving = false; }
   if (mHome) return;
   mHome = true; clearTimeout(mTimer); cancelAnimationFrame(mCount);
   menuBtn.classList.remove('home'); menuBtn.setAttribute('aria-label', 'Close section / return');
-  const startAngle = mTurn, startTime = performance.now();
-  const rotate = now => {
-    if (!mHome || mTarget !== 1) return;
-    mTurn = (startAngle + ((now - startTime) / MENU.autoCloseMs) * 360) % 360;
-    menuDraw(mP);
-    mCount = requestAnimationFrame(rotate);
-  };
-  mCount = requestAnimationFrame(rotate);
 }
 navEl.addEventListener('click', e => { if (e.target.closest('a')) menuToHome(); });
-menuBtn.addEventListener('click', () => { if (mLeaving) return; if (mTarget === 1) closeAsDot(); else menuOpen(); });
+menuBtn.addEventListener('click', () => { if (mLeaving) return; if (mTarget === 1) closeMinus(); else menuOpen(); });
 addEventListener('resize', () => { menuMeasure(); menuDraw(mP); });
 menuMeasure(); nameCap = 1; setNameOpen(1); menuDraw(0); requestAnimationFrame(pulseTick);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { menuMeasure(); menuDraw(mP); });
