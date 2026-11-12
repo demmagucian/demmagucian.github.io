@@ -334,7 +334,7 @@ const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContex
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
 const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
 const REFL_HEIGHT_P = .22;             // portrait (vertical) screens: much shorter reflection, so it fades out on its own instead of running down the page. Landscape is cut short by the screen edge, so it keeps REFL_HEIGHT
-const REFL_GAP = 2;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
+const REFL_GAP = 1;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
 const REFL_PAD = .06;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
 const reflSharp = mk(), reflMed = mk(), reflHeavy = mk(), reflSmall = mk();
@@ -561,6 +561,7 @@ let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
 /* The canvas always takes the proportions of the image and fits inside the window with a margin */
 const HOME_SCALE = { portrait: .82, landscape: .86 };
 const PORTRAIT_TOP_GAP = .07;   // vertical screens: extra space between the header line and the top of the image, as a fraction of the image height (iPhone: ~35px more than before)
+const PORTRAIT_REFL_WEIGHT = .65;   // vertical screens: how much of the reflection counts when balancing the image between header and footer (it fades out, so only a part of it weighs: 1 = all of it, 0 = none)
 const PORTRAIT_GROUP_NUDGE = 0;   // vertical screens: the image + its reflection are centered as one group (the lift follows REFL_HEIGHT_P automatically); this nudges the group, as a fraction of the image height (+ = up, - = down)
 const PHONE_PORTRAIT_LIFT_OLD = .10;   // phone and iPad held upright: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
 let aspect = 3 / 4;
@@ -632,7 +633,7 @@ function setBox() {
     const natTop = cv.offsetTop;                              // layout top with no lift (the stage starts at the top of the viewport)
     const imgH = Math.min(w, h * aspect) / aspect;
     const limit = document.querySelector('.site-header').offsetHeight + 2 + imgH * PORTRAIT_TOP_GAP;   // extra breathing room under the header (phones were clamped right at the old limit)
-    const lift = (imgH * REFL_HEIGHT_P + REFL_GAP) / 2 + imgH * PORTRAIT_GROUP_NUDGE;   // half the reflection's length: image + reflection end up centered together
+    const lift = imgH * REFL_HEIGHT_P * PORTRAIT_REFL_WEIGHT / 2 + imgH * PORTRAIT_GROUP_NUDGE;   // only a part of the reflection counts: the space above the image and the space below it (to the footer) stay close to equal
     cv.style.top = `${Math.max(-lift, limit - natTop)}px`;
   }
   if (isLight) layoutRoom();
