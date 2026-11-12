@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Demma Guciàn</title>
+<style>
+  /* Self-hosted font (lives in the repo, so Android always gets it): put Arimo.ttf in a folder called "fonts" next to index.html */
+  @font-face { font-family: "Arimo"; src: local("Arimo"), url("fonts/Arimo.ttf") format("truetype"); font-weight: 400 700; font-style: normal; font-display: swap; }
+  :root {
+    color-scheme: dark;
+    --ink: #ffffff;
+    --m: clamp(12px, 2vw, 24px);
+    --site-type: clamp(1rem, 2vw, 1.2rem);
+    --header-h: calc(env(safe-area-inset-top, 0px) + var(--m) + 24px + var(--m));
+    --footer-h: var(--header-h);
+    --banner-h: clamp(112px, 27vh, 230px);
+    --ico-stroke: 1.84;   /* line weight shared by the social icons and the light/dark icon */
+    --ico-op: .9;         /* brightness shared by every footer icon */
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; background: #000; color: var(--ink);
+    font-family: "Helvetica Neue", Helvetica, "Arimo", Arial, sans-serif;   /* Apple devices use Helvetica Neue; Android has neither, so it gets Arimo (same shapes and widths as Helvetica/Arial) */
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  .stage { position: fixed; z-index: 1; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: #000; touch-action: none; overscroll-behavior: none; transition: opacity .9s ease; }
+  canvas { display: block; height: auto; background: transparent; touch-action: none; outline: none; cursor: pointer; will-change: transform;
+    }
+  #c { position: relative; z-index: 1; background: #000; }
+
+  .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
+    display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
+  .site-name { color: var(--ink); text-decoration: none; font-size: var(--site-type); line-height: 24px;
+    letter-spacing: -.025em; font-weight: 500; white-space: nowrap; }
+  /* The name rests as "DG". The two hidden parts ("emma " and "uciàn") grow open from the script, in step with the page turn of the + */
+  .site-name .nr { display: inline-block; vertical-align: top; height: 24px; line-height: 24px; width: 0; opacity: 0; white-space: pre;
+    clip-path: inset(-30px 0 -30px 0); will-change: width, opacity; }   /* clips only the sides */
+  .menu { position: relative; margin-left: auto; display: flex; align-items: center; height: 24px; }
+  .main-nav { display: flex; align-items: center; gap: .5em; text-transform: lowercase; visibility: hidden; height: 24px; }   /* hidden until the + opens it */
+  .menu-btn { --plus: calc(var(--site-type) * 1.125); font-size: var(--site-type); flex: none; position: relative; width: 24px; height: 24px; margin-right: .5em; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; will-change: transform; transform-origin: 50% 50%; }
+  .menu-btn .flip { display: block; width: var(--plus); height: var(--plus); will-change: transform; transform-origin: 50% 50%; }   /* carries the page turn; the "home" word stays outside it */
+  .menu-btn .pulse { display: block; width: var(--plus); height: var(--plus); will-change: transform, opacity; }   /* the breathing of the + is driven from the script, so it never jumps */
+  .menu-btn svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; overflow: visible; transition: opacity .45s ease; }
+  .menu-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .main-nav a { color: var(--ink); text-decoration: none; font-size: var(--site-type); line-height: 24px;
+    letter-spacing: -.025em; font-weight: 500; white-space: nowrap; transition: opacity .45s ease; }
+  /* When one section is selected, the remaining labels recede very slightly. */
+  .main-nav.has-selection a:not([aria-current="page"]) { opacity: .9; }
+  /* Selected item: italic, no greying. font-style cannot be animated (it snaps), so the slant is a skew on the word itself:
+     it leans in and out smoothly, the width never changes (no layout shift) and the marching line underneath stays straight */
+  .main-nav a .t { display: inline-block; transform-origin: 50% 75%; transform: skewX(0deg); will-change: transform; -webkit-text-stroke: 0px currentColor;
+    transition: transform .7s cubic-bezier(.22, .61, .36, 1), -webkit-text-stroke-width .7s cubic-bezier(.22, .61, .36, 1); }
+  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .3825px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
+  .site-name, .main-nav a { position: relative; display: inline-block; height: 24px; line-height: 24px; }
+  :root { --footer-item-gap: 3px; --footer-type-size: 8.8px; }
+  .social-links > div, .theme-row { position: relative; display: flex; align-items: center; gap: var(--footer-item-gap); height: 14px; }
+  .site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+  .copyright { color: var(--ink); }
+  .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
+    display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;   /* theme button bottom-left, social icons bottom-right */
+    padding: 6px var(--m) 0;   /* was 9px: icons + line + ©2026 moved up 3px */
+    background: transparent; }
+  .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
+  .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--footer-item-gap); }   /* icon-to-label spacing matches the spacing between neighboring icons */
+  .social-stack { transform: none; }
+  .social-links { display: flex; align-items: center; justify-content: flex-end; gap: var(--footer-item-gap); }
+  .social-links a, .theme-btn { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center;
+    color: var(--ink); text-decoration: none; }
+  .social-links a:hover { opacity: .55; }
+  .theme-btn { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+  .theme-row { justify-content: center; height: 14px; }
+  .theme-btn svg, .social-links svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: var(--ico-stroke); stroke-linecap: round; stroke-linejoin: round; opacity: var(--ico-op); }
+  .theme-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
+  .social-links .x-mark { width: 10px; height: 10px; fill: currentColor; stroke: none; }   /* the X glyph fills its whole box, the other icons only ~75-80%: 10px makes it read the same size */
+  .stage { overflow: hidden; }
+  .stage.section-mode { opacity: 0; pointer-events: none; }   /* an item is selected: the home image fades out; it fades back in with "home" */
+  .content-frame { position: fixed; z-index: 2; top: var(--header-h); left: 0; right: 0;
+    bottom: var(--footer-h); display: none; overflow: hidden;
+    background: transparent; }   /* transparent on purpose: a black frame fading in over the fading image made the band between header and footer fade twice as fast as the strip under the header (the stripe). The stage alone now drives one even fade. */
+  .content-frame.open { display: block; animation: sectionIn .8s ease both; }
+  @keyframes sectionIn { from { opacity: 0; } to { opacity: 1; } }
+  .content-frame iframe { display: none !important; }
+  .section-placeholder { display: none !important; min-height: 100%; padding: 0; background: #000; color: transparent; }
+  .section-placeholder h1 { display: none; }
+  @media (max-width: 700px) {
+    :root { --m: 12px; --site-type: 1rem; }
+    .main-nav { gap: .4em; }
+    .menu-btn { margin-right: .4em; }
+    .site-footer { }
+    .copyright { font-size: var(--footer-type-size); }
+    :root { --footer-item-gap: 3px; --footer-type-size: 8.8px; }
+    .social-links { gap: var(--footer-item-gap); }
+  }
+  /* Desktop and iPad (wider than the phone breakpoint): footer icon group and ©2026 20% bigger, anchored to the bottom-right corner. Phones keep the original sizes above. */
+  @media (min-width: 701px) {
+    :root { --footer-item-gap: 3.6px; --footer-type-size: 10.56px; }
+    .social-links { gap: var(--footer-item-gap); }
+    .social-links > div { gap: var(--footer-item-gap); height: 16.8px; }
+    .social-links a, .theme-btn { width: 16.8px; height: 16.8px; }
+    .theme-row { height: 16.8px; }
+    .theme-btn svg, .social-links svg { width: 14.4px; height: 14.4px; }
+    .social-links .x-mark { width: 12px; height: 12px; }
+    .copyright { font-size: var(--footer-type-size); line-height: 1; padding-bottom: 0; }
+    /* The icons + line + ©2026 group sits in the bottom-right corner with the same margin (--m) from the right edge and from the bottom
+       as the + has from the right and top, and as the name has from the left and top. Phones keep the original footer. */
+    .site-footer { align-items: flex-end; padding: 0 var(--m) var(--m); }
+  }
+  @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn, .social-links a { transition: none; } }
+
+  /* ===== Light mode: plain white background ===== */
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 1.2s; animation-timing-function: cubic-bezier(.45, 0, .2, 1); }   /* smooth crossfade of the whole page */
+  html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade .site-header *, html.theme-fade .site-footer * {
+    transition: background-color 1.2s ease, color 1.2s ease, opacity 1.2s ease !important; }   /* fallback when the browser has no view transitions */
+  html[data-theme="light"] { color-scheme: light; --ink: #2b2620; }
+  html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #fff; }
+  html[data-theme="light"] #c { background: transparent; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="home"><canvas id="c"></canvas></div>
+<div class="caption"><span id="capTitle"></span> <span class="cap-num"><span id="nA"></span><span id="nB"></span></span></div>
+
+<header class="site-header">
+  <a class="site-name" href="#home" id="homeLink" aria-label="Demma Guciàn">D<span class="nr">emma&nbsp;</span>G<span class="nr">uciàn</span></a>
+  <div class="menu" id="menu">
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mainNav">
+      <span class="flip"><span class="pulse"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="v" d="M12 1v22"/><path class="h" d="M1 12h22"/></svg></span></span>
+    </button>
+    <nav class="main-nav" id="mainNav" aria-label="Main navigation">
+      <a href="#portraits" id="portraitsLink"><span class="t">Artworks</span></a>
+      <a href="#writing" id="writingLink"><span class="t">Writing</span></a>
+      <a href="#process" id="processLink"><span class="t">Studio</span></a>
+      <a href="#me" id="meLink"><span class="t">Me</span></a>
+    </nav>
+  </div>
+</header>
+<main class="content-frame" id="contentFrame" aria-label="Selected section">
+  <iframe id="externalPage" title="Demma Guciàn on Verse" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  <section class="section-placeholder" id="writingPanel" hidden><h1>Writing</h1></section>
+  <section class="section-placeholder" id="processPanel" hidden><h1>Process</h1></section>
+  <section class="section-placeholder" id="mePanel" hidden><h1>Me</h1></section>
+</main>
+<footer class="site-footer">
+  <div class="social-stack theme-stack">
+    <div class="theme-row"><button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to light mode" title="Switch to light mode"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="none"/></svg></button></div>
+    <span class="copyright" id="themeLabel">dark</span>
+  </div>
+  <div class="social-stack">
+  <div class="social-links" aria-label="Social links">
+    <div>
+    <a href="#" data-link="email" aria-label="Email" title="Email">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="1.5"/><path d="m3.5 6 8.5 7 8.5-7"/></svg>
+    </a>
+    <a href="#" data-link="x" aria-label="X" title="X">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="x-mark"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zm-1.29 19.49h2.039L6.486 3.24H4.298z"/></svg>
+    </a>
+    <a href="#" data-link="instagram" aria-label="Instagram" title="Instagram">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.6" cy="6.6" r=".8" fill="currentColor" stroke="none"/></svg>
+    </a>
+    </div>
+  </div>
+  <div class="copyright">©2026</div>
+  </div>
+</footer>
+<script>
+/* ===== SETTINGS: edit this block only. ===== */
+const CONFIG = {
+  theme: 'auto',   // 'auto' follows the device (light or dark), or force 'light' / 'dark'. Also works in the address: ?theme=light
+  // Home-section image set. Each item has a title and a folder holding images named 001.jpg, 002.jpg ... (lowercase .jpg).
+  // To add another home image set, copy the whole { ... } block and add a comma between them.
+  portraits: [
+    { title: "Study for Self-Portrait with Tortoiseshell Glasses and Hawaiian Shirt, 2026",
+      folder: "images/portrait-1",
+      count: 4,       // how many images are uploaded right now. Raise it as you upload more (up to 100)
+      url: "" }       // reserved for a marketplace link per image (not used yet)
+  ],
+  seed: null,           // null = a new random seed on every visit. A number (e.g. 12345) = the same random choices every time
+  transitionMs: 6000,   // time for one full dissolve from one image to the next
+  holdMs: 0,            // pause on each image between dissolves (0 = continuous)
+  order: "sequence",    // "sequence" or "shuffle"
+  imageBase: "",        // where your image folders live. "" = same site. With R2: "https://images.yourdomain.com/" (keep the final slash)
+  imageCors: false,     // set true ONLY if images come from another address (R2) whose CORS settings allow your site; saving a piece needs it
+  sizes: [],            // [] = one size, files directly in the portrait folder. Later: [1600, 3200], one subfolder per size
+  caption: false,       // true = show the title and (#001) number at the bottom center
+  style: "blend",       // "blend" = crossfade through a blend mode; "crossfade" = plain smooth blend
+  blendMode: "multiply", // multiply, screen, overlay, soft-light, hard-light, difference, color-dodge, color-burn, luminosity
+  blendAmount: 0.7,      // strength of the blend-mode look in the middle (0 = plain crossfade, 1 = full)
+  blendIntensity: 0.5,   // overall strength of every blend-mode effect (more saturated, negative, contrasty colors). 1 = as before, 0.5 = half as intense, 0 = none
+  ease: true,           // soft start and soft end of each transition
+  hover: true,          // while the mouse or a finger is on the image, the transition parameters vary
+  hoverModes: ["multiply", "screen", "overlay", "soft-light", "hard-light"],  // blend modes it may pick while hovering
+  hoverAmount: [0.2, 1],       // range for the random blend strength
+  hoverEveryMs: 240,           // while hovering, a new random strength is picked this often (ms)
+  hoverGlide: 0.28,            // how quickly the strength follows each new value (0.06 = lazy, 0.18 = snappy)
+  hoverFloor: 0.42,            // how much of the blend shows even at the start and end of a transition (0 = none, 1 = full)
+  hoverFadeMs: 450,            // how long the hover effect takes to fade out after you leave
+  hoverIdleMs: 500,           // the mouse or finger counts as present until it has been still this long (ms)
+
+  /* How the image reacts to the mouse, a finger, a click or the wheel. All of it responds at once and fades out when you stop */
+  react: {
+    base: 0.14,       // a little activity just from being over the image
+    motion: 0.95,     // stronger response to pointer speed AND area covered
+    speedRef: 700,    // px/s that counts as full pointer speed
+    attackMs: 60,     // near-instant response when movement begins
+    pulseMs: 700,     // a touch or click gives a short burst that fades over this time (ms)
+    boost: 2.2,       // up to 5.5x dissolve speed at full movement intensity
+    skipHold: true,   // true = touching the image ends the pause between dissolves right away
+    lens: 0,          // strength of the lantern reveal around the pointer (0 = off: hovering only changes the intensity of the loop, 1 = full)
+    lensSize: 0.48,   // size of the reveal as a fraction of the image's long side (it was 0.8, now 40% smaller). Soft edges, so no round shape shows (0.3 = small, 1.2 = nearly everything)
+    lensFollowMs: 120,   // how closely the reveal follows the pointer (lower = tighter, higher = floatier)
+    lensFadeInMs: 700,   // how slowly the reveal appears when you arrive (ms)
+    lensFadeOutMs: 2500, // how slowly it fades away after you leave (ms)
+    zoom: 0           // the image grows by this much while you press it, then eases back (0.0035 = 0.35%, 0 = no zoom)
+  },
+  clickAction: "select",       // what a click or tap does: "select" = pick and lock an area of similar color (below); "jump" = go straight to a new random image
+  selection: true,             // with "select": the pixels of similar color connected to the tap are picked (like a magic wand) and LOCKED as they look right now.
+                               // The rest keeps looping. Every tap adds to the locked area. Tap a locked area to unlock it; Esc clears all
+  flashMs: 0,                  // while something is locked, the rest changes in a quick flash of this length (ms) instead of a slow dissolve (0 = keep the dissolve)
+  selectionHoldMs: 8000,       // a locked area unlocks by itself after this many ms (0 = stays locked until you clear it)
+  releaseMs: 1500,             // an unlocked area dissolves back into the loop over this time (0 = instant)
+  clickToRelease: true,        // true = tapping a locked area unlocks only that area
+  wandTolerance: 40,           // how different a color can be and still be picked (0-441; about 20 = strict, 80 = loose)
+  wandContiguous: true,        // true = only pixels connected to the tap. false = similar colors anywhere in the image
+  selectionRes: 640,           // resolution of the selection (long edge, px). Higher = finer edges but slower on phones
+  tapSlop: 10,          // px: moving more than this while pressed is a drag, not a click. A tap is a click, a drag is not
+  focus: [0.5, 0.5]     // part of each image that stays in view when the window crops it (0-1, [0.5, 0.5] = center)
+};
+
+/* ===== RANDOMNESS ==================================================== */
+/* A new random value is drawn for each parameter below at the start of every transition, so no two behave the same.
+   The fixed values in CONFIG are just the starting point. All draws come from the seed, so they can be repeated.
+   [min, max] = random number between the two   { pick: [...] } = one random choice   { pair: [min, max] } = a random low-high range
+   To keep a parameter fixed, delete its line here. To stop all randomness: enabled: false. */
+const RANDOM = {
+  enabled: true,
+  params: {
+    transitionMs: [4000, 9000],
+    holdMs: [0, 2500],
+    order: { pick: ["sequence", "shuffle"] },
+    style: { pick: ["blend", "crossfade"] },
+    blendMode: { pick: ["multiply", "screen", "overlay", "soft-light", "hard-light", "luminosity"] },
+    blendAmount: [0.2, 1],
+    hoverAmount: { pair: [0.05, 1] },
+    hoverEveryMs: [100, 220],
+    hoverGlide: [0.32, 0.52],
+    hoverFloor: [0.4, 0.8],
+    hoverFadeMs: [350, 550],
+    hoverIdleMs: [500, 800],
+    wandTolerance: [15, 90],
+    wandContiguous: { pick: [true, false] },
+    selectionHoldMs: [3000, 20000],
+    releaseMs: [1500, 4000]
+  }
+};
+const ROLL = {
+  transition: ['transitionMs', 'holdMs', 'order', 'style', 'blendMode', 'blendAmount',
+               'hoverAmount', 'hoverEveryMs', 'hoverGlide', 'hoverFloor', 'hoverFadeMs', 'hoverIdleMs'],
+  click: ['wandTolerance', 'wandContiguous', 'selectionHoldMs'],
+  release: ['releaseMs']
+};
+/* ===================================================================== */
+
+/* Seeded random numbers: the same seed + transition number always gives the same draws */
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+  t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const hash32 = (s, n) => (Math.imul(s ^ 0x9e3779b9, 0x85ebca6b) + Math.imul(n + 1, 0xc2b2ae35)) >>> 0;
+let seed = CONFIG.seed != null ? CONFIG.seed >>> 0 : crypto.getRandomValues(new Uint32Array(1))[0];
+let tn = 0, R = mulberry32(hash32(seed, 0));         // tn: transition counter; R: random source of the current transition
+function roll(keys) {                                // draw new random values for these CONFIG parameters
+  if (!RANDOM.enabled) return;
+  keys.forEach(k => {
+    const sp = RANDOM.params[k]; if (!sp) return;
+    const num = (a, b) => { const v = a + R() * (b - a); return b > 10 ? Math.round(v) : v; };
+    if (Array.isArray(sp)) CONFIG[k] = num(sp[0], sp[1]);
+    else if (sp.pick) CONFIG[k] = sp.pick[Math.floor(R() * sp.pick.length)];
+    else if (sp.pair) { const a = num(sp.pair[0], sp.pair[1]), b = num(sp.pair[0], sp.pair[1]); CONFIG[k] = [Math.min(a, b), Math.max(a, b)]; }
+  });
+}
+
+/* Builds each home image set's image list: folder/001.jpg ... */
+CONFIG.portraits.forEach(p => {
+  if (p.images) return;
+  p.images = Array.from({ length: p.count || 100 }, (_, i) => ({
+    dir: CONFIG.imageBase + p.folder, file: `${String(i + 1).padStart(3, '0')}.jpg` }));
+});
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+
+let cur = 0, epoch = 0;                              // active portrait, switch counter
+const imgs = () => CONFIG.portraits[cur].images;
+const count = () => imgs().length || 6;
+let W, H, C;
+let curMode = CONFIG.blendMode, curMs = CONFIG.transitionMs;           // mode and duration of the current transition
+const live = { amount: CONFIG.blendAmount, target: CONFIG.blendAmount };  // blend strength: moves smoothly toward its target
+const mouse = { last: -1e9, roll: 0 };                                  // when the mouse or finger was last moving on the image
+let energy = 0, effE = 0, lastQ = 0, lastNow = performance.now();      // energy: hover presence 0-1; effE: total effect level; lastQ: loop position 0 (A) to 1 (B)
+let imgA, imgB, A, B, idxA = -1, idxB = -1, phase = 'loading', t0 = 0, prog = 0, queue = [];
+const cache = new Map();
+const layer = document.createElement('canvas'), lctx = layer.getContext('2d');
+const held = document.createElement('canvas'), hctx = held.getContext('2d');           // locked areas: pixels picked by tapping
+const fadeC = document.createElement('canvas'), fctx = fadeC.getContext('2d');         // pixels that are fading out of the lock
+let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
+
+/* The canvas always takes the proportions of the image. Landscape: fits inside the window with a margin. Portrait: fills the space between header and footer (see setBox) */
+const HOME_SCALE = { landscape: .86 };   // landscape: size of the home image relative to the free window
+let aspect = 3 / 4;
+/* ===== Light mode ===== */
+let themePref;
+const themeQ = matchMedia('(prefers-color-scheme: light)'), themePrefInit = new URLSearchParams(location.search).get('theme') || (() => { try { return localStorage.getItem('theme'); } catch (e) { return null; } })() || CONFIG.theme || 'auto';
+let isLight = false;
+themePref = themePrefInit;
+const themeBtn = document.getElementById('themeBtn'), themeLabel = document.getElementById('themeLabel');
+function applyTheme() {
+  isLight = themePref === 'light' || (themePref === 'auto' && themeQ.matches);
+  document.documentElement.dataset.theme = isLight ? 'light' : 'dark';
+  themeLabel.textContent = isLight ? 'light' : 'dark';                       // shows the current mode; the button switches to the other
+  const to = isLight ? 'dark' : 'light'; themeBtn.setAttribute('aria-label', `Switch to ${to} mode`); themeBtn.title = `Switch to ${to} mode`;
+}
+applyTheme();
+const refreshTheme = () => { applyTheme(); if (imgA) { setBox(); size(); A = fit(imgA); draw(lastQ); } };
+themeQ.addEventListener('change', refreshTheme);
+themeBtn.addEventListener('click', () => {
+  themePref = isLight ? 'dark' : 'light';
+  try { localStorage.setItem('theme', themePref); } catch (e) {}
+  const go = () => refreshTheme();
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(go);
+  else { const r = document.documentElement; r.classList.add('theme-fade'); go(); setTimeout(() => r.classList.remove('theme-fade'), 1400); }
+});
+function setBox() {
+  const stage = document.getElementById('home');
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const margin = Math.max(12, Math.min(24, window.innerWidth * .02));
+  cv.style.aspectRatio = aspect;
+  cv.style.height = 'auto';
+  cv.style.position = 'relative';
+  if (sh > sw) {
+    /* Vertical screens (phone, iPad upright): the image is as big as it can be without touching the header or the footer.
+       Top limit = bottom of the header row, bottom limit = top of the footer icons / mode label, each with one margin of air.
+       Width is limited to the screen minus one margin on each side. The image is centered in the free band. */
+    const topY = document.getElementById('homeLink').getBoundingClientRect().bottom + margin;
+    const botY = Math.min(...[...document.querySelectorAll('.site-footer .social-stack')].map(el => el.getBoundingClientRect().top)) - margin;
+    const w = Math.max(1, Math.min(sw - 2 * margin, (botY - topY) * aspect));
+    cv.style.width = `${w}px`;
+    cv.style.top = `${(topY + botY) / 2 - stage.getBoundingClientRect().top - sh / 2}px`;   // top (not transform) so the zoom effect keeps working
+  } else {
+    const w = (sw - 2 * margin) * HOME_SCALE.landscape, h = (sh - 2 * margin) * HOME_SCALE.landscape;
+    cv.style.width = `${Math.min(w, h * aspect)}px`;
+    cv.style.top = '0px';
+  }
+}
+function applyAspect(im) {
+  const a = (im.naturalWidth || im.width) / (im.naturalHeight || im.height);
+  if (Math.abs(a - aspect) < .005) return false;
+  aspect = a; setBox(); return true;
+}
+
+/* Caption */
+const capTitle = document.getElementById('capTitle'), nA = document.getElementById('nA'), nB = document.getElementById('nB');
+if (!CONFIG.caption) document.querySelector('.caption').style.display = 'none';
+capTitle.textContent = CONFIG.portraits[0].title; capTitle.style.transition = 'opacity .5s ease';
+const label = i => '(#' + String(i + 1).padStart(3, '0') + ')';
+const setCaption = p => { nA.style.opacity = 1 - p; nB.style.opacity = p; };
+const showCaption = i => { nA.textContent = label(i); nB.textContent = ''; setCaption(0); };
+
+/* ===== Activity: how strongly the pointer is affecting the image right now ===== */
+const act = { speed: 0, motion: 0, coverage: 0, path: [], pulse: 0, lastX: 0, lastY: 0, lastT: 0, px: .5, py: .5, lx: .5, ly: .5, zoom: 1 };   // coverage measures the recent area swept by the pointer
+const gest = { down: false, moved: false, sx: 0, sy: 0 };
+function aim(e) { const r = cv.getBoundingClientRect(); act.px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); act.py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)); }
+function poke(x, y, now) {                           // pointer velocity + recent spatial coverage
+  if (act.lastT) act.speed = act.speed * .5 + Math.hypot(x - act.lastX, y - act.lastY) / Math.max(1, now - act.lastT) * 1000 * .5;
+  act.lastX = x; act.lastY = y; act.lastT = now;
+  act.path.push({ x: act.px, y: act.py, t: now });
+  while (act.path.length && now - act.path[0].t > 1100) act.path.shift();
+  if (act.path.length > 1) {
+    const xs = act.path.map(p => p.x), ys = act.path.map(p => p.y);
+    const spanX = Math.max(...xs) - Math.min(...xs), spanY = Math.max(...ys) - Math.min(...ys);
+    act.coverage = Math.min(1, Math.max(spanX, spanY) * 1.15 + Math.min(spanX, spanY) * .35);
+  }
+}
+
+/* ===== Hover reveal: the incoming image shows through a very large, very soft area that follows the pointer ===== */
+let lensC = null, lensLevel = 0;                     // lensLevel: how visible the reveal is, 0-1 (rises and fades slowly)
+function drawLens(p) {
+  const RC = CONFIG.react, a = Math.min(1, lensLevel * (.6 + .4 * effE) * RC.lens);
+  if (a < .01 || p <= 0 || p >= 1 || !B) return;
+  if (!lensC || lensC.width !== W || lensC.height !== H) { lensC = document.createElement('canvas'); lensC.width = W; lensC.height = H; }
+  const lc = lensC.getContext('2d'), cx = act.lx * W, cy = act.ly * H, r = RC.lensSize * Math.max(W, H);
+  lc.globalCompositeOperation = 'source-over'; lc.clearRect(0, 0, W, H); lc.drawImage(B, 0, 0);
+  const g = lc.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.35, 'rgba(0,0,0,.85)'); g.addColorStop(.7, 'rgba(0,0,0,.35)'); g.addColorStop(1, 'rgba(0,0,0,0)');   // no visible edge
+  lc.globalCompositeOperation = 'destination-in'; lc.fillStyle = g; lc.fillRect(0, 0, W, H);
+  ctx.globalAlpha = a; ctx.drawImage(lensC, 0, 0); ctx.globalAlpha = 1;
+}
+
+function size() {
+  let snapC = null;                                  // keep the locked areas when the window changes size
+  if (heldHas) { snapC = document.createElement('canvas'); snapC.width = held.width; snapC.height = held.height; snapC.getContext('2d').drawImage(held, 0, 0); }
+  const cw = cv.clientWidth, ch = cv.clientHeight;
+  const d = Math.min(window.devicePixelRatio || 1, Math.sqrt(12e6 / (cw * ch)));   // native resolution, capped for safety
+  W = cv.width = Math.round(cw * d);
+  H = cv.height = Math.round(ch * d);
+  if (CONFIG.selection) { layer.width = W; layer.height = H; }
+  held.width = W; held.height = H; fadeC.width = W; fadeC.height = H;
+  if (snapC) hctx.drawImage(snapC, 0, 0, W, H);
+}
+
+function fit(img) {  // draw an image to fill the canvas (cover)
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+  const s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s;
+  c.getContext('2d').drawImage(img, (W - w) * CONFIG.focus[0], (H - h) * CONFIG.focus[1], w, h);
+  return c;
+}
+
+function demo() {
+  const c = document.createElement('canvas'); c.width = 540; c.height = 960;
+  const x = c.getContext('2d'), r = (a, b) => a + Math.random() * (b - a);
+  const g = x.createLinearGradient(0, 0, r(0, 540), 960);
+  for (let k = 0; k < 3; k++) g.addColorStop(k / 2, `hsl(${r(0,360)|0},${r(40,90)|0}%,${r(15,65)|0}%)`);
+  x.fillStyle = g; x.fillRect(0, 0, 540, 960);
+  for (let k = 0; k < 6; k++) { x.fillStyle = `hsla(${r(0,360)|0},70%,55%,.5)`;
+    x.beginPath(); x.arc(r(0,540), r(0,960), r(40,200), 0, 7); x.fill(); }
+  return c;
+}
+
+const sizesAsc = [...CONFIG.sizes].sort((x, y) => x - y);
+function pickSizes() {
+  if (!sizesAsc.length) return [null];
+  let need = Math.max(W || 0, H || 0);
+  if (navigator.connection && navigator.connection.saveData) need *= .6;
+  let k = sizesAsc.findIndex(s => s >= need * .8);
+  if (k < 0) k = sizesAsc.length - 1;
+  return [...sizesAsc.slice(k), ...sizesAsc.slice(0, k).reverse()];
+}
+const srcFor = (item, size) => item.src || (size ? `${item.dir}/${size}/${item.file}` : `${item.dir}/${item.file}`);
+function loadFirst(item, tries) {
+  return new Promise(resolve => {
+    let n = 0;
+    const next = () => {
+      if (n >= tries.length) return resolve(demo());
+      const im = new Image(); if (CONFIG.imageCors) im.crossOrigin = 'anonymous';
+      im.onload = () => resolve(im); im.onerror = next; im.src = srcFor(item, tries[n++]);
+    };
+    next();
+  });
+}
+function getImage(i) {
+  const tries = pickSizes(), key = i + '@' + tries[0];
+  if (cache.has(key)) return cache.get(key);
+  const list = imgs();
+  const p = list.length ? loadFirst(list[i], tries) : Promise.resolve(demo());
+  cache.set(key, p);
+  if (cache.size > 4) cache.delete(cache.keys().next().value);
+  return p;
+}
+
+function nextIndex() {
+  const n = count();
+  if (CONFIG.order === 'shuffle') {
+    if (!queue.length) { queue = [...Array(n).keys()].sort(() => R() - .5);
+      if (n > 1 && queue[queue.length - 1] === idxB) queue.reverse(); }
+    return queue.pop();
+  }
+  return (idxB + 1) % n;
+}
+
+/* C = image A with image B laid over it using the blend mode, mixed in during the transition */
+function makeBlend() {
+  if (CONFIG.style !== 'blend') return;
+  C = document.createElement('canvas'); C.width = W; C.height = H;
+  const c = C.getContext('2d');
+  c.drawImage(A, 0, 0);
+  c.globalCompositeOperation = curMode; c.drawImage(B, 0, 0);
+}
+
+function draw(p) {  // p: 0 = image A, 1 = image B
+  lastQ = p;
+  if (!A) return;
+  drawBase(p);
+  drawLens(p);
+  if (heldHas) ctx.drawImage(held, 0, 0);            // locked areas stay on top, whatever the loop shows
+  if (fadeAt) {                                      // areas that were just unlocked fade out
+    const a = 1 - (performance.now() - fadeAt) / CONFIG.releaseMs;
+    if (a <= 0) { fadeAt = 0; fctx.clearRect(0, 0, W, H); }
+    else { ctx.globalAlpha = a; ctx.drawImage(fadeC, 0, 0); ctx.globalAlpha = 1; }
+  }
+}
+function drawBase(p) {
+  setCaption(p);
+  ctx.drawImage(A, 0, 0);
+  if (p <= 0) return;
+  if (p >= 1) { ctx.drawImage(B, 0, 0); return; }
+  if (CONFIG.style === 'blend' && C) {
+    ctx.globalAlpha = p; ctx.drawImage(B, 0, 0);
+    const base = CONFIG.blendAmount, amt = base + (live.amount - base) * effE;      // random strength, driven by hover and pointer
+    const floor = CONFIG.hoverFloor * effE, edge = Math.min(1, p / .08, (1 - p) / .08);
+    ctx.globalAlpha = Math.min(1, amt * (floor + (1 - floor) * Math.sin(Math.PI * p)) * edge * CONFIG.blendIntensity); ctx.drawImage(C, 0, 0);
+    ctx.globalAlpha = 1; return;
+  }
+  ctx.globalAlpha = p; ctx.drawImage(B, 0, 0); ctx.globalAlpha = 1;
+}
+
+const flash = t => { const w = Math.min(.5, CONFIG.flashMs / curMs); return t < 1 - w ? 0 : (t - (1 - w)) / w; };   // hold, then a quick change at the end
+function clearHeld() { hctx.clearRect(0, 0, held.width, held.height); heldHas = false; }
+function releaseHeld() {                            // unlock everything, with a fade
+  if (!heldHas) return;
+  roll(ROLL.release);
+  if (CONFIG.releaseMs > 0) { fctx.drawImage(held, 0, 0); fadeAt = performance.now(); }
+  clearHeld();
+}
+function releaseAt(clientX, clientY) {              // unlock only the locked area under the click
+  const r = cv.getBoundingClientRect(), k = CONFIG.selectionRes / Math.max(W, H);
+  const w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
+  const t = document.createElement('canvas'); t.width = w; t.height = h;
+  const tc = t.getContext('2d', { willReadFrequently: true }); tc.drawImage(held, 0, 0, w, h);
+  const px = tc.getImageData(0, 0, w, h).data;
+  const x0 = Math.min(w - 1, Math.max(0, Math.floor((clientX - r.left) / r.width * w)));
+  const y0 = Math.min(h - 1, Math.max(0, Math.floor((clientY - r.top) / r.height * h)));
+  const on = i => px[i * 4 + 3] > 40;
+  if (!on(y0 * w + x0)) return false;               // click was not on a locked area
+  const m = new Uint8Array(w * h), stack = [y0 * w + x0]; m[y0 * w + x0] = 1;
+  while (stack.length) {
+    const i = stack.pop(), x = i % w, y = (i - x) / w;
+    if (x > 0 && !m[i - 1] && on(i - 1)) { m[i - 1] = 1; stack.push(i - 1); }
+    if (x < w - 1 && !m[i + 1] && on(i + 1)) { m[i + 1] = 1; stack.push(i + 1); }
+    if (y > 0 && !m[i - w] && on(i - w)) { m[i - w] = 1; stack.push(i - w); }
+    if (y < h - 1 && !m[i + w] && on(i + w)) { m[i + w] = 1; stack.push(i + w); }
+  }
+  const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+  const mx = mc.getContext('2d'), id = mx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) { id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = 255; id.data[i * 4 + 3] = m[i] ? 255 : 0; }
+  mx.putImageData(id, 0, 0);
+  lctx.globalCompositeOperation = 'source-over'; lctx.clearRect(0, 0, W, H); lctx.drawImage(held, 0, 0);
+  lctx.globalCompositeOperation = 'destination-in'; lctx.imageSmoothingEnabled = true; lctx.drawImage(mc, 0, 0, W, H);
+  roll(ROLL.release);
+  if (CONFIG.releaseMs > 0) { fctx.drawImage(layer, 0, 0); fadeAt = performance.now(); }
+  hctx.globalCompositeOperation = 'destination-out'; hctx.drawImage(mc, 0, 0, W, H); hctx.globalCompositeOperation = 'source-over';
+  heldHas = false;                                  // still locked if any other locked pixel remains
+  for (let i = 3; i < px.length; i += 4) if (px[i] > 40 && !m[(i - 3) / 4]) { heldHas = true; break; }
+  return true;
+}
+/* Magic wand: picks the pixels whose color is close to the clicked pixel and locks them as they look now */
+function wand(clientX, clientY) {
+  const src = lastQ < .5 ? A : B;                    // the image that is mostly on screen
+  if (!src) return;
+  const r = cv.getBoundingClientRect(), k = CONFIG.selectionRes / Math.max(W, H);
+  const w = Math.max(1, Math.round(W * k)), h = Math.max(1, Math.round(H * k));
+  const t = document.createElement('canvas'); t.width = w; t.height = h;
+  const tc = t.getContext('2d', { willReadFrequently: true }); tc.imageSmoothingQuality = 'high'; tc.drawImage(src, 0, 0, w, h);
+  let px; try { px = tc.getImageData(0, 0, w, h).data; } catch (err) { selBlocked = true; return; }   // blocked: image from another site without permission
+  const x0 = Math.min(w - 1, Math.max(0, Math.floor((clientX - r.left) / r.width * w)));
+  const y0 = Math.min(h - 1, Math.max(0, Math.floor((clientY - r.top) / r.height * h)));
+  let sr = 0, sg = 0, sb = 0, n = 0;                 // seed color = average of the 3x3 pixels around the click
+  for (let y = Math.max(0, y0 - 1); y <= Math.min(h - 1, y0 + 1); y++) for (let x = Math.max(0, x0 - 1); x <= Math.min(w - 1, x0 + 1); x++) {
+    const i = (y * w + x) * 4; sr += px[i]; sg += px[i + 1]; sb += px[i + 2]; n++;
+  }
+  sr /= n; sg /= n; sb /= n;
+  const tol2 = CONFIG.wandTolerance * CONFIG.wandTolerance, m = new Uint8Array(w * h);
+  const close = i => { const dr = px[i * 4] - sr, dg = px[i * 4 + 1] - sg, db = px[i * 4 + 2] - sb; return dr * dr + dg * dg + db * db <= tol2; };
+  if (CONFIG.wandContiguous) {                       // flood fill outward from the click
+    const stack = [y0 * w + x0]; m[y0 * w + x0] = 1;
+    while (stack.length) {
+      const i = stack.pop(), x = i % w, y = (i - x) / w;
+      if (x > 0 && !m[i - 1] && close(i - 1)) { m[i - 1] = 1; stack.push(i - 1); }
+      if (x < w - 1 && !m[i + 1] && close(i + 1)) { m[i + 1] = 1; stack.push(i + 1); }
+      if (y > 0 && !m[i - w] && close(i - w)) { m[i - w] = 1; stack.push(i - w); }
+      if (y < h - 1 && !m[i + w] && close(i + w)) { m[i + w] = 1; stack.push(i + w); }
+    }
+  } else for (let i = 0; i < w * h; i++) if (close(i)) m[i] = 1;
+  const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+  const mx = mc.getContext('2d'), id = mx.createImageData(w, h);
+  for (let i = 0; i < w * h; i++) { id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = 255; id.data[i * 4 + 3] = m[i] ? 255 : 0; }
+  mx.putImageData(id, 0, 0);
+  lctx.globalCompositeOperation = 'source-over'; lctx.clearRect(0, 0, W, H); lctx.drawImage(src, 0, 0);
+  lctx.globalCompositeOperation = 'destination-in'; lctx.imageSmoothingEnabled = true; lctx.imageSmoothingQuality = 'high';
+  lctx.drawImage(mc, 0, 0, W, H);                    // scaling the mask up softens the edge
+  hctx.drawImage(layer, 0, 0); heldHas = true; heldAt = performance.now();       // lock: these pixels now stay as they are
+}
+
+async function advance() {
+  const e = epoch;
+  idxB = nextIndex();
+  const im = await getImage(idxB);
+  if (e !== epoch) return;                          // portrait changed while loading
+  imgB = im;
+  if (applyAspect(im)) {                            // different proportions: show it directly, no dissolve
+    clearHeld(); size(); B = fit(imgB); A = B; imgA = imgB; ctx.drawImage(A, 0, 0);
+    idxA = idxB; lastQ = 0; showCaption(idxA); phase = 'hold'; t0 = performance.now(); return;
+  }
+  tn++; R = mulberry32(hash32(seed, tn)); roll(ROLL.transition);       // new random look for this transition
+  const hovering = CONFIG.hover && performance.now() - mouse.last < CONFIG.hoverIdleMs;
+  curMode = hovering ? CONFIG.hoverModes[Math.floor(R() * CONFIG.hoverModes.length)] : CONFIG.blendMode;
+  curMs = CONFIG.transitionMs;
+  prog = 0;
+  B = fit(imgB); makeBlend();
+  nA.textContent = label(idxA); nB.textContent = label(idxB);
+  phase = 'dissolve'; t0 = performance.now();
+  if (CONFIG.order !== 'shuffle') getImage((idxB + 1) % count());  // preload the next one
+}
+
+/* ===== Click: jump straight to a new random image ===== */
+async function jump() {
+  const n = count(); if (n < 2) return;
+  const e = ++epoch;                                 // cancels a dissolve that was still loading; rapid clicks only keep the last one
+  let k; do { k = Math.floor(Math.random() * n); } while (k === idxA);
+  const im = await getImage(k);
+  if (e !== epoch) return;
+  clearHeld(); if (applyAspect(im)) size();
+  imgA = imgB = im; A = B = fit(im); C = null; idxA = idxB = k; queue = [];
+  prog = 0; lastQ = 0; ctx.drawImage(A, 0, 0); showCaption(k);
+  phase = 'hold'; t0 = performance.now();
+}
+
+function frame(now) {
+  const dt = Math.min(now - lastNow, 50); lastNow = now;
+  const RC = CONFIG.react;
+  if (heldHas && CONFIG.selectionHoldMs && performance.now() - heldAt > CONFIG.selectionHoldMs) releaseHeld();   // a lock lets go by itself
+  if (CONFIG.hover) {
+    const present = now - mouse.last < CONFIG.hoverIdleMs;
+    energy += ((present ? 1 : 0) - energy) * (1 - Math.exp(-dt / (present ? RC.attackMs : CONFIG.hoverFadeMs)));   // rises fast, fades slowly
+    const agitation = Math.min(1, act.motion);
+    const rollInterval = CONFIG.hoverEveryMs / (1 + agitation * 2.2);
+    if (present && now - mouse.roll > rollInterval) {
+      mouse.roll = now;
+      live.target = CONFIG.hoverAmount[0] + R() * (CONFIG.hoverAmount[1] - CONFIG.hoverAmount[0]);
+    }
+    live.amount += (live.target - live.amount) * Math.min(.9, CONFIG.hoverGlide + agitation * .25);
+    lensLevel += ((present ? 1 : 0) - lensLevel) * (1 - Math.exp(-dt / (present ? RC.lensFadeInMs : RC.lensFadeOutMs)));   // the reveal appears and fades slowly
+    const kf = 1 - Math.exp(-dt / RC.lensFollowMs); act.lx += (act.px - act.lx) * kf; act.ly += (act.py - act.ly) * kf;
+    act.speed *= Math.exp(-dt / 230);                // velocity decays smoothly after movement stops
+    act.coverage *= Math.exp(-dt / 1100);             // recent swept area fades more slowly than velocity
+    const movement = Math.min(1, (act.speed / RC.speedRef) * .55 + act.coverage * .55);
+    act.motion += (movement - act.motion) * (1 - Math.exp(-dt / 65));
+    act.pulse = Math.max(0, act.pulse - dt / RC.pulseMs);
+    effE = Math.min(1, energy * RC.base + act.motion * RC.motion + act.pulse);   // presence + velocity + swept area + click burst
+  } else { effE = 0; lensLevel = 0; }
+  act.zoom += ((gest.down ? 1 + RC.zoom : 1) - act.zoom) * (1 - Math.exp(-dt / 90));       // a tiny grow while pressed
+  cv.style.transform = Math.abs(act.zoom - 1) < .00005 ? '' : `scale(${act.zoom})`;
+  if (phase === 'dissolve') {
+    prog += dt / curMs * (1 + RC.boost * effE);      // fast, broad pointer movement makes the autoloop accelerate
+    if (prog >= 1) { draw(1); imgA = imgB; A = B; idxA = idxB; lastQ = 0; showCaption(idxA); prog = 0; phase = 'hold'; t0 = now; }
+    else draw(heldHas && CONFIG.flashMs ? flash(prog) : CONFIG.ease ? prog * prog * (3 - 2 * prog) : prog);
+  } else if (phase === 'hold' && (now - t0 >= CONFIG.holdMs || (RC.skipHold && effE > .3))) { phase = 'loading'; advance(); }
+  if (fadeAt && phase !== 'dissolve') draw(lastQ);  // keep the unlock fade moving during a pause
+  requestAnimationFrame(frame);
+}
+
+async function start() {
+  setBox(); size();
+  idxB = -1; idxA = nextIndex(); idxB = idxA;
+  imgA = await getImage(idxA); applyAspect(imgA); size(); A = fit(imgA); ctx.drawImage(A, 0, 0); showCaption(idxA);
+  phase = 'hold'; t0 = performance.now();
+  requestAnimationFrame(frame);
+}
+
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => {
+  if (!imgA) return; setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
+  if (phase === 'dissolve') makeBlend();
+  draw(lastQ); }, 60); });
+
+/* ===== Touch and mouse =====
+   Moving, touching and the wheel make the image react. A click or tap selects an area of similar color and locks it (or jumps, see clickAction).
+   Vertical swipes stay with the browser (pull to refresh works). */
+cv.addEventListener('pointerdown', e => {
+  if (e.button > 0) return;
+  try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+  const now = performance.now();
+  Object.assign(gest, { down: true, moved: false, sx: e.clientX, sy: e.clientY });
+  mouse.last = now; aim(e);
+});
+cv.addEventListener('pointermove', e => {
+  const now = performance.now();
+  aim(e);
+  if (CONFIG.hover) { mouse.last = now; poke(e.clientX, e.clientY, now); }
+  if (gest.down && !gest.moved && Math.hypot(e.clientX - gest.sx, e.clientY - gest.sy) > CONFIG.tapSlop) gest.moved = true;
+});
+function endPress(e, cancelled) {
+  if (!gest.down) return;
+  gest.down = false;
+  if (!cancelled && !gest.moved) {
+    if (document.body.classList.contains('menu-open')) return;
+    onClick(e);
+  }
+}
+function onClick(e) {
+  if (CONFIG.clickAction === 'jump') return jump();
+  if (!CONFIG.selection) return;
+  roll(ROLL.click);
+  if (CONFIG.clickToRelease && heldHas && releaseAt(e.clientX, e.clientY)) return;   // tapped a locked area: unlock it
+  if (!selBlocked) wand(e.clientX, e.clientY);
+}
+cv.addEventListener('pointerup', e => endPress(e, false));
+cv.addEventListener('pointercancel', e => endPress(e, true));
+cv.addEventListener('pointerleave', () => { if (!gest.down) { mouse.last = -1e9; act.lastT = 0; } });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('wheel', e => {                     // scrolling (wheel or trackpad) also makes the image react
+  if (!CONFIG.hover) return;
+  mouse.last = performance.now(); act.speed = Math.max(act.speed, Math.min(3000, (Math.abs(e.deltaX) + Math.abs(e.deltaY)) * 12));
+}, { passive: true });
+
+/* No page zoom from pinching or double-tapping */
+['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+let lastEnd = 0;
+document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastEnd < 350 && !e.target.closest('nav, .menu-btn')) e.preventDefault(); lastEnd = n; }, { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault());
+
+/* Switching home image set: the new image set dissolves in from whatever is on screen */
+function selectPortrait(k) {
+  if (k === cur) return;
+  cur = k; epoch++; cache.clear(); queue = []; idxB = -1; clearHeld();
+  if (A) { const s = document.createElement('canvas'); s.width = W; s.height = H;
+    s.getContext('2d').drawImage(cv, 0, 0); A = s; imgA = s; }
+  capTitle.style.opacity = 0;
+  setTimeout(() => { capTitle.textContent = CONFIG.portraits[k].title; capTitle.style.opacity = 1; }, 500);
+  phase = 'loading'; advance();
+}
+
+start();
+
+const contentFrame = document.getElementById('contentFrame');
+const externalPage = document.getElementById('externalPage');
+const home = document.getElementById('home');
+const caption = document.querySelector('.caption');
+const ARTWORKS_URL = 'https://verse.works/demma-gucian';
+const SITE_LINKS = { x: '', instagram: '', email: '' }; // Add the final profile URLs and email address here.
+let artworksLoaded = false;
+function showSection(section) {
+  const active = !!section;
+  home.classList.toggle('section-mode', active);
+  contentFrame.classList.toggle('open', active);
+  document.getElementById('writingPanel').hidden = section !== 'writing';
+  document.getElementById('processPanel').hidden = section !== 'process';
+  document.getElementById('mePanel').hidden = section !== 'me';
+  externalPage.style.display = section === 'portraits' ? 'block' : 'none';
+  if (section === 'portraits' && !artworksLoaded) { externalPage.src = ARTWORKS_URL; artworksLoaded = true; }
+  document.querySelectorAll('.main-nav a').forEach(a => {
+    const selected = a.id === (section ? section + 'Link' : '');
+    if (selected) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  document.getElementById('mainNav').classList.toggle('has-selection', !!document.querySelector('.main-nav a[aria-current]'));
+  if (!section && mTarget === 1) menuClose();
+}
+document.getElementById('homeLink').addEventListener('click', e => { e.preventDefault(); if (mTarget === 1) closeMinus(); else { showSection(null); nameCapTo(1, 500); } });
+document.getElementById('portraitsLink').addEventListener('click', e => { e.preventDefault(); showSection('portraits'); });
+document.getElementById('writingLink').addEventListener('click', e => { e.preventDefault(); showSection('writing'); });
+document.getElementById('processLink').addEventListener('click', e => { e.preventDefault(); showSection('process'); });
+document.getElementById('meLink').addEventListener('click', e => { e.preventDefault(); showSection('me'); });
+document.querySelectorAll('.social-links a[data-link]').forEach(a => {
+  const destination = SITE_LINKS[a.dataset.link];
+  if (destination) a.href = destination;
+  else { a.setAttribute('aria-disabled', 'true'); a.addEventListener('click', e => e.preventDefault()); }
+});
+/* The globe reveals the contact links as a short-lived, cinematic fan. */
+document.addEventListener('keydown', e => { if (e.key === 'Escape') showSection(null); });
+if ('ResizeObserver' in window) new ResizeObserver(() => {
+  if (!imgA) return; setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
+  if (phase === 'dissolve') makeBlend(); draw(lastQ);
+}).observe(document.getElementById('home'));
+
+/* ===== Menu: a + that turns like a book page ===== */
+/* Closed: the + sits at the right end and breathes. Opening: it travels straight to the left of the row while flipping like a page (the + is the front, the - is the back),
+   the items appear in its wake, and it lands as a - . When - or DG is clicked, the minus turns closed into + directly (it never becomes a dot). */
+const MENU = { flipMs: 650, autoCloseMs: 10000, homePauseMs: 240 };   // flipMs: the whole page turn. autoCloseMs: time of the half turn of the - before it closes
+const menuBtn = document.getElementById('menuBtn'), navEl = document.getElementById('mainNav'), vBar = menuBtn.querySelector('.v');
+const flipEl = menuBtn.querySelector('.flip'), pulseEl = menuBtn.querySelector('.pulse'), glyphEl = menuBtn.querySelector('svg');
+const menuReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let mP = 0, mTarget = 0, mDist = 1, mGap = 10, mAnim = 0, mTimer = 0, mCount = 0;   // mP: progress 0 (closed) to 1 (open)
+let mTurn = 0, mHome = false, mLeaving = false;            // mTurn: auto-close countdown (0-180, no visual rotation); mHome: a section is selected
+const mEase = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+/* The name rests as "DG": "emma " and "uciàn" open from the left to the right as the page turns, and close the same way on the way back */
+const nameR = [...document.querySelectorAll('.site-name .nr')]; let nameW = [0, 0], nameE = 0;
+function setNameOpen(e) {
+  nameE = e;
+  const total = (nameW[0] + nameW[1]) * e, w = [Math.min(nameW[0], total), Math.max(0, total - nameW[0])];
+  nameR.forEach((el, i) => { el.style.width = w[i].toFixed(2) + 'px'; el.style.opacity = nameW[i] ? Math.min(1, w[i] / nameW[i] * 1.6).toFixed(3) : 0; });
+}
+function nameMeasure() {
+  nameW = nameR.map(el => { el.style.width = 'auto'; const w = el.getBoundingClientRect().width; el.style.width = ''; return w; });
+  // Preserve the intended open/closed state when fonts finish loading or the layout is remeasured.
+  setNameOpen(nameCap);
+}
+let nameCap = 1, nameCapAnim = 0;   // nameCap: how open the name is allowed to be (1 = follows the menu, 0 = kept as DG)
+function nameCapTo(target, ms) {
+  cancelAnimationFrame(nameCapAnim);
+  const from = nameCap, t0 = performance.now();
+  if (menuReduce || !ms || from === target) { nameCap = target; setNameOpen(nameCap); return; }
+  const tick = now => {
+    const u = Math.min(1, (now - t0) / ms); nameCap = from + (target - from) * mEase(u);
+    setNameOpen(nameCap);
+    if (u < 1) nameCapAnim = requestAnimationFrame(tick);
+  };
+  nameCapAnim = requestAnimationFrame(tick);
+}
+function menuMeasure() {
+  mGap = parseFloat(getComputedStyle(menuBtn).marginRight) || 0;
+  mDist = navEl.offsetWidth + mGap;                       // how far the page travels: the width of the items row
+  nameMeasure();
+}
+function menuDraw(p) {
+  const e = mEase(p), pos = e * mDist, ang = 180 * e, flat = p <= 0 || p >= 1;
+  setNameOpen(nameCap);
+  menuBtn.style.transform = `translateX(${mDist - pos}px)`;
+  flipEl.style.transform = flat ? 'none' : `perspective(260px) rotateY(${-ang}deg)`;
+  /* on the back side the glyph is mirrored by the page turn; mirroring it back keeps the flip continuous (no jump at either end) */
+  glyphEl.style.transform = !flat && ang >= 90 ? 'scaleX(-1)' : 'none';
+  vBar.style.visibility = ang < 90 ? 'visible' : 'hidden';   // past the half turn the back side shows: a - sign
+  navEl.style.clipPath = `inset(-8px -8px -8px ${Math.max(0, mDist - pos - mGap)}px)`;   // items show only to the right of the page
+}
+/* The breathing of the + (closed) and of the - (open). It follows one clock through the page turn, so it never restarts from the beginning of its loop. */
+function pulseTick(now) {
+  const f = (1 + Math.cos(2 * Math.PI * now / 3733)) / 2;           // 1 = brightest, 0 = dimmest
+  const a = menuReduce ? 0 : 1;                                       // always pulsing: + closed, - open, and through the page turn
+  const g = 1 - a * (1 - f);
+  /* Wider breathing: the sign goes from a little darker (g = 0) to full brightness (g = 1), with a small size swing. */
+  pulseEl.style.opacity = (.56 + .44 * g).toFixed(3);
+  pulseEl.style.transform = `scale(${(.98 + .05 * g).toFixed(3)})`;
+  requestAnimationFrame(pulseTick);
+}
+function menuRun(target, done) {
+  cancelAnimationFrame(mAnim); mTarget = target;
+  const from = mP, total = MENU.flipMs * Math.abs(target - from), t0 = performance.now();
+  if (menuReduce || !total) { mP = target; menuDraw(mP); if (done) done(); return; }
+  const tick = now => {
+    const u = Math.min(1, (now - t0) / total); mP = from + (target - from) * u; menuDraw(mP);
+    if (u < 1) mAnim = requestAnimationFrame(tick); else if (done) done();
+  };
+  mAnim = requestAnimationFrame(tick);
+}
+function menuCountStart() {                                // the - waits (still) for autoCloseMs, then the menu closes
+  if (mHome || mTarget !== 1) return;
+  clearTimeout(mTimer); cancelAnimationFrame(mCount);
+  if (menuReduce) { mTimer = setTimeout(menuClose, MENU.autoCloseMs); return; }
+  const t0 = performance.now();
+  const tick = now => {
+    if (mHome || mTarget !== 1) return;
+    mTurn = 180 * Math.min(1, (now - t0) / MENU.autoCloseMs);
+    if (mTurn >= 180) menuClose(); else mCount = requestAnimationFrame(tick);
+  };
+  mCount = requestAnimationFrame(tick);
+}
+function menuOpen() {
+  clearTimeout(mTimer); cancelAnimationFrame(mCount);
+  mHome = false; mLeaving = false; mTurn = 0; menuBtn.classList.remove('home');
+  menuMeasure(); nameCapTo(0, 500);                       // hide the full name as + opens the menu
+  navEl.style.visibility = 'visible'; menuBtn.setAttribute('aria-expanded', 'true');
+  menuRun(1, menuCountStart);
+}
+function menuClose() {
+  if (mTarget === 0) return;
+  clearTimeout(mTimer); cancelAnimationFrame(mCount);
+  mHome = false; mLeaving = false;
+  menuBtn.classList.remove('home'); menuBtn.setAttribute('aria-label', 'Menu');
+  nameCapTo(1, 500);                                      // restore the full Demma Guciàn wordmark as - is pressed
+  menuBtn.setAttribute('aria-expanded', 'false');
+  menuRun(0, () => {
+    navEl.style.visibility = 'hidden'; mTurn = 0;
+    menuDraw(0);
+  });
+}
+function closeMinus() {                                    // the - stays a - while the page turns closed into +
+  if (mTarget !== 1 || mLeaving) return;
+  clearTimeout(mTimer); cancelAnimationFrame(mCount);
+  mHome = false; mTurn = 0;
+  menuBtn.setAttribute('aria-label', 'Menu');
+  showSection(null);                                       // clears the selected section and calls menuClose()
+}
+function menuToHome() {                                    // section selected: the minus stays visible, still, and the auto-close is cancelled
+  if (mTarget !== 1) return;
+  if (mLeaving) { clearTimeout(mTimer); mLeaving = false; }
+  if (mHome) return;
+  mHome = true; clearTimeout(mTimer); cancelAnimationFrame(mCount);
+  menuBtn.classList.remove('home'); menuBtn.setAttribute('aria-label', 'Close section / return');
+}
+navEl.addEventListener('click', e => { if (e.target.closest('a')) menuToHome(); });
+menuBtn.addEventListener('click', () => { if (mLeaving) return; if (mTarget === 1) closeMinus(); else menuOpen(); });
+addEventListener('resize', () => { menuMeasure(); menuDraw(mP); });
+menuMeasure(); nameCap = 1; setNameOpen(1); menuDraw(0); requestAnimationFrame(pulseTick);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { menuMeasure(); menuDraw(mP); });
+</script>
+</body>
+</html>
