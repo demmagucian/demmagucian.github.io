@@ -17,6 +17,8 @@
     --header-h: calc(env(safe-area-inset-top, 0px) + var(--m) + 24px + var(--m));
     --footer-h: var(--header-h);
     --banner-h: clamp(112px, 27vh, 230px);
+    --ico-stroke: 1.84;   /* line weight shared by the social icons and the light/dark icon */
+    --ico-op: .9;         /* brightness shared by every footer icon */
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; background: #000; color: var(--ink);
@@ -31,7 +33,8 @@
   .stage canvas.reflection { position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none;
     pointer-events: none; opacity: .8; image-rendering: auto; will-change: contents; }   /* soft mirrored glow on the "floor" below the image */
   #c { position: relative; z-index: 1; background: #000;     /* image always on top of the halo and fully opaque */
-    box-shadow: 0 0 9px 1px rgba(var(--ambilight-rgb), .6); }   /* regular halo, ~9px all around, in the live color of the image */
+    box-shadow: 0 0 9px 1px rgba(var(--ambilight-rgb), .6);
+    clip-path: inset(-80px -80px 0 -80px); }   /* halo stays on top and sides; nothing spills below the bottom edge, so the gap to the reflection stays clean */   /* regular halo, ~9px all around, in the live color of the image */
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
     display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
@@ -59,7 +62,7 @@
      it leans in and out smoothly, the width never changes (no layout shift) and the marching line underneath stays straight */
   .main-nav a .t { display: inline-block; transform-origin: 50% 75%; transform: skewX(0deg); will-change: transform; -webkit-text-stroke: 0px currentColor;
     transition: transform .7s cubic-bezier(.22, .61, .36, 1), -webkit-text-stroke-width .7s cubic-bezier(.22, .61, .36, 1); }
-  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .51px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
+  .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .3825px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
   .main-nav a[aria-current="page"] { text-shadow: 0 0 3.5px rgba(var(--ambilight-rgb), .276), 0 0 10.5px rgba(var(--ambilight-rgb), .162); }
   /* "Marching ants" line under the site name and every menu word, like a selection outline in Photoshop */
   .site-name, .main-nav a { position: relative; display: inline-block; height: 24px; line-height: 24px; }   /* same box = same underline height for the name and every item */
@@ -87,11 +90,11 @@
   .social-links a:hover { opacity: .55; }
   .theme-btn { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
   .theme-row { justify-content: center; height: 14px; }
-  .theme-btn svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 1.84; stroke-linecap: round; stroke-linejoin: round; }
+  .theme-btn svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: var(--ico-stroke); stroke-linecap: round; stroke-linejoin: round; opacity: var(--ico-op); }
   .theme-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
-  .social-links svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 1.84;
-    stroke-linecap: round; stroke-linejoin: round; }
-  .social-links .x-mark { width: 12.1px; height: 12.1px; fill: currentColor; stroke: none; opacity: .78; }
+  .social-links svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: var(--ico-stroke);
+    stroke-linecap: round; stroke-linejoin: round; opacity: var(--ico-op); }
+  .social-links .x-mark { width: 10px; height: 10px; fill: currentColor; stroke: none; }   /* the X glyph fills its whole box, the other icons only ~75-80%: 10px makes it read the same size */
   .stage { overflow: hidden; }
   .stage.section-mode { opacity: 0; pointer-events: none; }   /* an item is selected: the home image, reflection and glow fade out to black; they fade back in with "home" */
   .content-frame { position: fixed; z-index: 2; top: var(--header-h); left: 0; right: 0;
@@ -118,7 +121,7 @@
     .theme-row { height: 16.8px; }
     .theme-btn svg { width: 14.4px; height: 14.4px; }
     .social-links svg { width: 14.4px; height: 14.4px; }
-    .social-links .x-mark { width: 14.5px; height: 14.5px; }
+    .social-links .x-mark { width: 12px; height: 12px; }
     .copyright { font-size: 9.6px; line-height: 1; padding-bottom: 0; }   /* ©2026 also +20% (8px -> 9.6px) */
     /* The icons + line + ©2026 group sits in the bottom-right corner with the same margin (--m) from the right edge and from the bottom
        as the + has from the right and top, and as the name has from the left and top. Phones keep the original footer. */
@@ -131,7 +134,7 @@
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 1.2s; animation-timing-function: cubic-bezier(.45, 0, .2, 1); }   /* smooth crossfade of the whole page */
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .room, html.theme-fade .site-header *, html.theme-fade .site-footer * {
     transition: background-color 1.2s ease, color 1.2s ease, box-shadow 1.2s ease, opacity 1.2s ease, text-shadow 1.2s ease !important; }   /* fallback when the browser has no view transitions */
-  .room-panel { position: absolute; background: #fcfbff; }   /* white canvas behind the artwork */
+  .room-panel { position: absolute; background: #fcfbff; clip-path: inset(-80px -80px 0 -80px); }   /* same: its shadow is cut at the bottom edge */   /* white canvas behind the artwork */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32; }
   html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #e4dfd8; }   /* the sections fade to the wall tone instead of black */
   html[data-theme="light"] .site-name::after, html[data-theme="light"] .main-nav a::after, html[data-theme="light"] .social-links > div::after, html[data-theme="light"] .theme-row::after {
@@ -140,7 +143,7 @@
   /* Light mode reverses the halo: instead of colored light spilling outward, a soft negative shadow settles around the panel and artwork. */
   html[data-theme="light"] .room-panel { box-shadow: 0 7px 24px rgba(38, 31, 24, .13), 0 1px 5px rgba(38, 31, 24, .10); }
   html[data-theme="light"] #c { background: transparent; box-shadow: 0 2px 11px 1px rgba(35, 29, 23, .18), 0 0 38px 7px rgba(35, 29, 23, .12); }
-  html[data-theme="light"] .stage canvas.ambilight { opacity: .24; mix-blend-mode: multiply; }  /* live image colors become a restrained dark spill, like a negative halo */
+  html[data-theme="light"] .stage canvas.ambilight { opacity: 0; }  /* live image colors become a restrained dark spill, like a negative halo */
   html[data-theme="light"] .stage canvas.reflection { mix-blend-mode: normal; opacity: .6; }  /* reflection + skirt remain luminous on the floor */
   html[data-theme="light"] .site-name, html[data-theme="light"] .main-nav a, html[data-theme="light"] .copyright { text-shadow: 0 1px 2px rgba(35, 29, 23, .16), 0 2px 7px rgba(35, 29, 23, .10); }
   html[data-theme="light"] .main-nav a[aria-current="page"] { text-shadow: 0 1px 2px rgba(35, 29, 23, .17), 0 2px 6px rgba(35, 29, 23, .10); }
@@ -330,6 +333,8 @@ const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContex
 
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
 const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
+const REFL_HEIGHT_P = .22;             // portrait (vertical) screens: much shorter reflection, so it fades out on its own instead of running down the page. Landscape is cut short by the screen edge, so it keeps REFL_HEIGHT
+const REFL_GAP = 2;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
 const REFL_PAD = .06;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
 const reflSharp = mk(), reflMed = mk(), reflHeavy = mk(), reflSmall = mk();
@@ -360,7 +365,7 @@ function reflLayer(src, w, h, stops) {
 const skirtCanvas = document.createElement('canvas'); skirtCanvas.className = 'reflection'; skirtCanvas.setAttribute('aria-hidden', 'true');
 document.getElementById('home').insertBefore(skirtCanvas, reflCanvas);
 const skirtCtx = skirtCanvas.getContext('2d'), skTiny = mk(), skTinyCtx = skTiny.getContext('2d');
-const SKIRT_W = 192, SKIRT_SPREAD = .6, SKIRT_OPACITY = .4;   // SKIRT_SPREAD: how far it reaches past each side (fraction of the image width)
+const SKIRT_W = 192, SKIRT_SPREAD = .6, SKIRT_SPREAD_P = .4, SKIRT_OPACITY = .4;   // SKIRT_SPREAD: how far it reaches past each side (fraction of the image width)
 const skMask = mk(), skTex = mk(); let skTexKey = '';
 /* Floor texture for the skirt (same family as the reflection's): long horizontal streaks plus fine grain, fixed, so the glow reads as light ON a surface and not as fog in the air */
 function buildSkTex(sw, sh) {
@@ -375,7 +380,7 @@ function buildSkTex(sw, sh) {
 function updateSkirt(sr, ir, h) {
   /* The skirt is an elliptical pool of light on the floor, centered a little below the screen's base line: its top is rounded and only
      reaches the base line faintly, so it grows out of the floor around the reflection instead of starting at the image's sides */
-  const spread = ir.width * SKIRT_SPREAD, up = 0, down = h * 1.1;   // up = 0: nothing rises beside the screen
+  const spread = ir.width * (sr.height > sr.width ? SKIRT_SPREAD_P : SKIRT_SPREAD), up = 0, down = h * 1.1;   // up = 0: nothing rises beside the screen
   const SW = ir.width + 2 * spread, SH = up + down;
   skirtCanvas.style.display = 'block';
   skirtCanvas.style.left = (ir.left - sr.left - spread) + 'px';
@@ -442,12 +447,12 @@ function buildReflMask(rw, rh, padT) {
   reflMaskKey = rw + 'x' + rh + 'x' + padT;
 }
 function updateReflection(sr, ir) {
-  const h = ir.height * REFL_HEIGHT;
+  const h = ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT);   // vertical stage: brief reflection (and, through h, a brief skirt)
   if (!homeVisible || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; return; }   // hidden in the sections
   const padPx = ir.width * REFL_PAD, W = ir.width + 2 * padPx;
   reflCanvas.style.display = 'block';
   reflCanvas.style.left = (ir.left - sr.left - padPx) + 'px';
-  reflCanvas.style.top = (ir.bottom - sr.top + 2) + 'px';
+  reflCanvas.style.top = (ir.bottom - sr.top + REFL_GAP) + 'px';
   reflCanvas.style.width = W + 'px';
   reflCanvas.style.height = h + 'px';
   reflCanvas.style.transform = 'none';
@@ -513,7 +518,7 @@ function updateAmbilight(now) {
   midCtx.drawImage(cv, (ir.left - sr.left) * kx3, (ir.top - sr.top) * ky3, ir.width * kx3, ir.height * ky3);
   glowCtx.clearRect(0, 0, gw, gh);
   glowCtx.drawImage(midCanvas, 0, 0, gw, gh);
-  updateReflection(sr, isLight && lightBox ? { left: ir.left, width: ir.width, height: ir.height, bottom: sr.top + lightBox.bottom, gap: lightBox.gap } : ir);
+  updateReflection(sr, isLight ? { left: ir.left, width: ir.width, height: ir.height, bottom: ir.bottom, gap: 0 } : ir);
 
   // The same live image colors also illuminate the white interface typography and icons.
   // Keep the sampling small and guarded so cross-origin image settings cannot break the animation.
@@ -555,10 +560,12 @@ let heldHas = false, selBlocked = false, heldAt = 0, fadeAt = 0;
 
 /* The canvas always takes the proportions of the image and fits inside the window with a margin */
 const HOME_SCALE = { portrait: .82, landscape: .86 };
-const PHONE_PORTRAIT_LIFT = .10;   // phone and iPad held upright: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
+const PORTRAIT_TOP_GAP = .07;   // vertical screens: extra space between the header line and the top of the image, as a fraction of the image height (iPhone: ~35px more than before)
+const PORTRAIT_GROUP_NUDGE = 0;   // vertical screens: the image + its reflection are centered as one group (the lift follows REFL_HEIGHT_P automatically); this nudges the group, as a fraction of the image height (+ = up, - = down)
+const PHONE_PORTRAIT_LIFT_OLD = .10;   // phone and iPad held upright: raises the home image (and its reflection) by this fraction of the image height   // size of the home image: 1 = as before, .82 = 18% smaller
 let aspect = 3 / 4;
 /* ===== Light mode ===== */
-const LIGHT = { matte: .045 };   // white margin around the artwork in light mode
+const LIGHT = { matte: 0 };   // white margin around the artwork in light mode (0 = no frame, the panel is exactly the artwork's box)
 let themePref;
 const themeQ = matchMedia('(prefers-color-scheme: light)'), themePrefInit = new URLSearchParams(location.search).get('theme') || (() => { try { return localStorage.getItem('theme'); } catch (e) { return null; } })() || CONFIG.theme || 'auto';
 const roomEl = document.createElement('div'); roomEl.className = 'room';
@@ -586,7 +593,8 @@ themeBtn.addEventListener('click', () => {
   else { const r = document.documentElement; r.classList.add('theme-fade'); go(); setTimeout(() => r.classList.remove('theme-fade'), 1400); }
 });
 function layoutRoom() {                                     // keep the artwork's size and position unchanged; only size its white backing panel
-  const aw = cv.offsetWidth, ah = cv.offsetHeight, L = cv.offsetLeft, T = cv.offsetTop;
+  const sr = document.getElementById('home').getBoundingClientRect(), r = cv.getBoundingClientRect();
+  const aw = r.width, ah = r.height, L = r.left - sr.left, T = r.top - sr.top;   // real fractional box (offsetTop/offsetHeight round to whole pixels and left a sliver or a bigger gap)
   if (!aw || !ah) return;
   const m = aw * LIGHT.matte, RW = aw + 2 * m, RH = ah + m;
   const bottom = T + ah;
@@ -622,8 +630,9 @@ function setBox() {
        Words box top = d, box height 24px, line 2px below it -> limit = d + 26 + d = header height + 2px. The lift never takes the image above that limit
        (and an image that would start above it is pushed down to it). */
     const natTop = cv.offsetTop;                              // layout top with no lift (the stage starts at the top of the viewport)
-    const limit = document.querySelector('.site-header').offsetHeight + 2;
-    const lift = Math.min(w, h * aspect) / aspect * PHONE_PORTRAIT_LIFT;
+    const imgH = Math.min(w, h * aspect) / aspect;
+    const limit = document.querySelector('.site-header').offsetHeight + 2 + imgH * PORTRAIT_TOP_GAP;   // extra breathing room under the header (phones were clamped right at the old limit)
+    const lift = (imgH * REFL_HEIGHT_P + REFL_GAP) / 2 + imgH * PORTRAIT_GROUP_NUDGE;   // half the reflection's length: image + reflection end up centered together
     cv.style.top = `${Math.max(-lift, limit - natTop)}px`;
   }
   if (isLight) layoutRoom();
