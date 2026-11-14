@@ -79,6 +79,7 @@
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
     display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between;   /* theme button bottom-left, social icons bottom-right */
     padding: 0 var(--m) var(--edge-b);   /* the groups sit on the bottom gap, the same on phones, tablets and desktops */
+    transform: translateY(var(--foot-shift, 0px));   /* set by the layout: the groups go down a little, only when that evens out the header and footer bands */
     background: transparent; }
   .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
   .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 11px; }   /* 11px = 5px to the line + 1px line + 5px to the year */
@@ -163,6 +164,7 @@
   <section class="section-placeholder" id="processPanel" hidden><h1>Process</h1></section>
   <section class="section-placeholder" id="mePanel" hidden><h1>Me</h1></section>
 </main>
+<div id="footRoom" aria-hidden="true" style="position:fixed;left:0;bottom:0;width:0;visibility:hidden;pointer-events:none;height:max(0px, calc(var(--edge-b) - max(8px, env(safe-area-inset-bottom, 0px) + 4px)))"></div>
 <footer class="site-footer">
   <div class="social-stack theme-stack">
     <div class="theme-row"><button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to light mode" title="Switch to light mode"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
@@ -348,6 +350,7 @@ themeBtn.addEventListener('click', () => {
   if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(go);
   else { const r = document.documentElement; r.classList.add('theme-fade'); go(); setTimeout(() => r.classList.remove('theme-fade'), 1400); }
 });
+let footShift = 0;   // px the footer is moved down (see setBox)
 /* Widths of the name: the letters D and G, and the two words fully unfolded (single line, or stacked: the wider word) */
 function nameMetrics() {
   const nls = [...document.querySelectorAll('.site-name .nl')], nrs = [...document.querySelectorAll('.site-name .nr')];
@@ -370,12 +373,18 @@ function setBox() {
   const hdr = R('.site-header')[0], ftr = R('.site-footer')[0], nm = R('.site-name')[0], btn = R('.menu-btn')[0], line1 = R('.site-name .nl')[0];
   const rows = R('.site-footer .social-links > div, .site-footer .theme-row'), years = R('.site-footer .copyright');
   const themeBox = R('.site-footer .theme-stack')[0], socialBox = R('.site-footer .social-stack:not(.theme-stack)')[0];
-  let w = Math.min(sw, stage.clientHeight * aspect), regionTop = 0, regionBottom = stage.clientHeight, stacked = false;
+  let w = Math.min(sw, stage.clientHeight * aspect), regionTop = 0, regionBottom = stage.clientHeight, stacked = false, footNew = 0;
   if (hdr && ftr && nm && btn && line1 && rows.length && years.length && themeBox && socialBox) {
-    const pageTop = hdr.top, pageBottom = ftr.bottom, H = pageBottom - pageTop;   // the header sits at the top of the page and the footer at the bottom: the page frame
+    const fs = footShift;                                                         // how far the footer is moved down right now
+    const pageTop = hdr.top, pageBottom = ftr.bottom - fs, H = pageBottom - pageTop;   // the header sits at the top of the page and the footer at the bottom: the page frame
     const g = nm.top - pageTop;                                                   // name -> top of the page
     const Tabs = Math.max(line1.bottom + 2, btn.bottom) + g;                      // +2: the animated line sits 2px below the name's box
-    const Babs = Math.min(...rows.map(r => r.top)) - g;                           // the image ends one gap above the footer icons
+    /* Header and footer bands: the footer group (icons + line + (c)2026) is taller than the name, so its band is taller. When the image sits between them,
+       the footer groups are moved down a little (never closer than 8px to the bottom, and clear of the home bar) so that the two bands get closer to equal height. */
+    const iconsTop0 = Math.min(...rows.map(r => r.top)) - fs;                     // icons top with the footer in its normal place
+    const shiftMax = document.getElementById('footRoom').offsetHeight;
+    const shift = Math.round(Math.min(shiftMax, Math.max(0, (pageBottom - iconsTop0 + g) - (Tabs - pageTop))));
+    const Babs = iconsTop0 + shift - g;                                           // the image ends one gap above the footer icons
     const gx = g;                                                                 // the same gap is kept beside the image (to the name, the icons and the +)
     const pr = parseFloat(getComputedStyle(document.querySelector('.site-header')).paddingRight) || 0;
     const btnLeft = sw - pr - (parseFloat(getComputedStyle(document.getElementById('menuBtn')).marginRight) || 0) - btn.width;   // resting place of the +
@@ -392,8 +401,10 @@ function setBox() {
     if (sA >= full - 0.5) mode = 'side'; else if (sB >= full - 0.5) mode = 'stack';
     w = mode === 'stack' ? sB : mode === 'side' ? sA : bandW;
     stacked = mode === 'stack';
+    footNew = mode === 'band' ? shift : 0;                                        // the footer only moves when the image sits between header and footer
     if (mode === 'band') { regionTop = Tabs; regionBottom = Babs; } else { regionTop = pageTop; regionBottom = pageBottom; }
   }
+  if (footNew !== footShift) { footShift = footNew; document.querySelector('.site-footer').style.setProperty('--foot-shift', footNew + 'px'); }
   const nameEl = document.querySelector('.site-name');
   if (nameEl.classList.contains('stacked') !== stacked) nameEl.classList.toggle('stacked', stacked);
   cv.style.aspectRatio = aspect;
