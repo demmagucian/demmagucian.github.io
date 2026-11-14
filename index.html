@@ -13,7 +13,7 @@
     --ink-rgb: 255, 255, 255;
     --m: clamp(12px, 2vw, 24px);
     --site-type: clamp(.88rem, 1.76vw, 1.056rem);
-    --edge-b: max(clamp(14px, 2.2vmin, 22px), calc(env(safe-area-inset-bottom, 0px) + 10px));   /* gap between the footer groups and the page bottom: vmin keeps it the same in portrait and landscape */
+    --edge-b: calc(var(--m) + env(safe-area-inset-top, 0px) / 2);   /* gap between the footer groups and the page bottom = the gap between the name and the page top (the header centers the name with exactly this margin) */
     --row-h: 21.12px;   /* height of the name / items row (24px x 0.8 x 1.1) */
     --header-h: calc(env(safe-area-inset-top, 0px) + var(--m) + var(--row-h) + var(--m));
     --footer-h: var(--header-h);
@@ -164,7 +164,7 @@
   <section class="section-placeholder" id="processPanel" hidden><h1>Process</h1></section>
   <section class="section-placeholder" id="mePanel" hidden><h1>Me</h1></section>
 </main>
-<div id="footRoom" aria-hidden="true" style="position:fixed;left:0;bottom:0;width:0;visibility:hidden;pointer-events:none;height:max(0px, calc(var(--edge-b) - max(8px, env(safe-area-inset-bottom, 0px) + 4px)))"></div>
+<div id="footRoom" aria-hidden="true" style="position:fixed;left:0;bottom:0;width:0;visibility:hidden;pointer-events:none;height:max(0px, calc(var(--edge-b) - max(8px, env(safe-area-inset-bottom, 0px) * .4 + 4px)))"></div>
 <footer class="site-footer">
   <div class="social-stack theme-stack">
     <div class="theme-row"><button type="button" class="theme-btn" id="themeBtn" aria-label="Switch to light mode" title="Switch to light mode"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button></div>
