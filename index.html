@@ -12,8 +12,10 @@
     --ink: #ffffff;
     --ink-rgb: 255, 255, 255;
     --m: clamp(12px, 2vw, 24px);
-    --site-type: clamp(1rem, 2vw, 1.2rem);
-    --header-h: calc(env(safe-area-inset-top, 0px) + var(--m) + 24px + var(--m));
+    --site-type: clamp(.88rem, 1.76vw, 1.056rem);
+    --edge-b: max(clamp(14px, 2.2vmin, 22px), calc(env(safe-area-inset-bottom, 0px) + 10px));   /* gap between the footer groups and the page bottom: vmin keeps it the same in portrait and landscape */
+    --row-h: 21.12px;   /* height of the name / items row (24px x 0.8 x 1.1) */
+    --header-h: calc(env(safe-area-inset-top, 0px) + var(--m) + var(--row-h) + var(--m));
     --footer-h: var(--header-h);
     --banner-h: clamp(112px, 27vh, 230px);
     --ico-stroke: 1.84;   /* line weight shared by the social icons and the light/dark icon */
@@ -31,14 +33,17 @@
 
   .site-header { position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: var(--header-h);
     display: flex; align-items: center; padding: 0 var(--m); background: transparent; }
-  .site-name { color: var(--ink); text-decoration: none; font-size: var(--site-type); line-height: 24px;
+  .site-name { color: var(--ink); text-decoration: none; font-size: var(--site-type); line-height: var(--row-h);
     letter-spacing: -.025em; font-weight: 500; white-space: nowrap; }
   /* The name rests as "DG". The two hidden parts ("emma " and "uciàn") grow open from the script, in step with the page turn of the + */
-  .site-name .nr { display: inline-block; vertical-align: top; height: 24px; line-height: 24px; width: 0; opacity: 0; white-space: pre;
+  .site-name .nl { display: inline-block; white-space: pre; height: var(--row-h); line-height: var(--row-h); }
+  /* When the image cannot keep the page margin as its distance from the name, the name stacks: "Demma" above "Guciàn" (folded: D above G). Each word still unfolds to the right. */
+  .site-name.stacked { display: inline-flex; flex-direction: column; align-items: flex-start; height: auto; align-self: flex-start; margin-top: calc((var(--header-h) - var(--row-h)) / 2); }
+  .site-name .nr { display: inline-block; vertical-align: top; height: var(--row-h); line-height: var(--row-h); width: 0; opacity: 0; white-space: pre;
     clip-path: inset(-30px 0 -30px 0); will-change: width, opacity; }   /* clips only the sides, so the glow of the letters is not cut above and below */
-  .menu { position: relative; margin-left: auto; display: flex; align-items: center; height: 24px; }
-  .main-nav { display: flex; align-items: center; gap: .5em; text-transform: lowercase; visibility: hidden; height: 24px; }   /* hidden until the + opens it */
-  .menu-btn { --plus: calc(var(--site-type) * 1.125); font-size: var(--site-type); flex: none; position: relative; width: 24px; height: 24px; margin-right: .5em; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer;
+  .menu { position: relative; margin-left: auto; display: flex; align-items: center; height: var(--row-h); }
+  .main-nav { display: flex; align-items: center; gap: .5em; text-transform: lowercase; visibility: hidden; height: var(--row-h); }   /* hidden until the + opens it */
+  .menu-btn { --plus: calc(var(--site-type) * 1.125); font-size: var(--site-type); flex: none; position: relative; width: var(--row-h); height: var(--row-h); margin-right: .5em; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; will-change: transform; transform-origin: 50% 50%;
     }
   .menu-btn .flip { display: block; width: var(--plus); height: var(--plus); will-change: transform; transform-origin: 50% 50%; }   /* carries the page turn; the "home" word stays outside it */
@@ -46,9 +51,11 @@
   .menu-btn svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; overflow: visible; transition: opacity .45s ease; }
   /* The minus stays still (no rotation) while a section is selected. */
   .main-nav.has-selection a:not([aria-current="page"])::after { animation-play-state: paused; }
+  /* When the opened row would overlap the image (or the name), the items unfold downwards from the right, one below the other, under the - which stays where the + was */
+  .main-nav.vertical { position: absolute; top: calc(100% + 8px); right: 0; height: auto; flex-direction: column; align-items: flex-end; gap: 9px; }
   .menu-btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .main-nav a { color: var(--ink); text-decoration: none; font-size: var(--site-type); line-height: 24px;
-    letter-spacing: -.025em; font-weight: 500; white-space: nowrap; transition: opacity .45s ease; }
+  .main-nav a { color: var(--ink); text-decoration: none; font-size: var(--site-type); line-height: var(--row-h);
+    letter-spacing: -.025em; font-weight: 500; white-space: nowrap; transition: opacity .7s cubic-bezier(.22, .61, .36, 1); }
   /* When one section is selected, the remaining labels (and their animated lines) are 25% greyed out. */
   .main-nav.has-selection a:not([aria-current="page"]) { opacity: .75; }
   /* Selected item: italic, no greying. font-style cannot be animated (it snaps), so the slant is a skew on the word itself:
@@ -57,11 +64,11 @@
     transition: transform .7s cubic-bezier(.22, .61, .36, 1), -webkit-text-stroke-width .7s cubic-bezier(.22, .61, .36, 1); }
   .main-nav a[aria-current="page"] .t { transform: skewX(-12deg); -webkit-text-stroke-width: .3825px; }   /* selected: italic (skew) and bolder (stroke). The font-weight is NOT changed: a different weight has a different width, which moved the lines and the distances between items */
   /* "Marching ants" line under the site name and every menu word, like a selection outline in Photoshop */
-  .site-name, .main-nav a { position: relative; display: inline-block; height: 24px; line-height: 24px; }   /* same box = same underline height for the name and every item */
+  .site-name, .main-nav a { position: relative; display: inline-block; height: var(--row-h); line-height: var(--row-h); }   /* same box = same underline height for the name and every item */
   .site-name::after, .main-nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; pointer-events: none;
     background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), .95) 0 4px, rgba(var(--ink-rgb), .18) 4px 8px);
     background-size: 8px 1px; animation: ants 0.7s linear infinite; }
-  @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
+    @keyframes ants { from { background-position: 0 0; } to { background-position: 8px 0; } }
   /* Same marching-ants line under the footer icons */
   .social-links > div, .theme-row { position: relative; display: flex; align-items: center; gap: 3px; height: 14px; }
   .social-links > div::after, .theme-row::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 5px); height: 1px; pointer-events: none;   /* 5px below the icons and 5px above ©2026 */
@@ -70,8 +77,8 @@
   .site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; }
   .copyright { color: var(--ink); }
   .site-footer { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: var(--header-h);
-    display: flex; flex-direction: row; align-items: flex-start; justify-content: space-between;   /* theme button bottom-left, social icons bottom-right */
-    padding: 6px var(--m) 0;   /* was 9px: icons + line + ©2026 moved up 3px */
+    display: flex; flex-direction: row; align-items: flex-end; justify-content: space-between;   /* theme button bottom-left, social icons bottom-right */
+    padding: 0 var(--m) var(--edge-b);   /* the groups sit on the bottom gap, the same on phones, tablets and desktops */
     background: transparent; }
   .copyright { font-size: 8px; letter-spacing: .01em; white-space: nowrap; padding-bottom: 1px; text-align: center; }
   .social-stack { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 11px; }   /* 11px = 5px to the line + 1px line + 5px to the year */
@@ -98,7 +105,7 @@
   .section-placeholder { display: none !important; min-height: 100%; padding: 0; background: #000; color: transparent; }
   .section-placeholder h1 { display: none; }
   @media (max-width: 700px) {
-    :root { --m: 12px; --site-type: 1rem; }
+    :root { --m: 12px; --site-type: .88rem; }
     .main-nav { gap: .4em; }
     .menu-btn { margin-right: .4em; }
     .site-footer { }
@@ -117,7 +124,6 @@
     .copyright { font-size: 9.6px; line-height: 1; padding-bottom: 0; }   /* ©2026 also +20% (8px -> 9.6px) */
     /* The icons + line + ©2026 group sits in the bottom-right corner with the same margin (--m) from the right edge and from the bottom
        as the + has from the right and top, and as the name has from the left and top. Phones keep the original footer. */
-    .site-footer { align-items: flex-end; padding: 0 var(--m) var(--m); }
   }
   @media (prefers-reduced-motion: reduce) { .menu-panel, .menu-btn, .social-links a { transition: none; } .site-name::after, .main-nav a::after { animation: none; } }
 
@@ -138,7 +144,7 @@
 <div class="caption"><span id="capTitle"></span> <span class="cap-num"><span id="nA"></span><span id="nB"></span></span></div>
 
 <header class="site-header">
-  <a class="site-name" href="#home" id="homeLink" aria-label="Demma Guciàn">D<span class="nr">emma&nbsp;</span>G<span class="nr">uciàn</span></a>
+  <a class="site-name" href="#home" id="homeLink" aria-label="Demma Guciàn"><span class="nl">D<span class="nr">emma&nbsp;</span></span><span class="nl">G<span class="nr">uciàn</span></span></a>
   <div class="menu" id="menu">
     <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mainNav">
       <span class="flip"><span class="pulse"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="v" d="M12 1v22"/><path class="h" d="M1 12h22"/></svg></span></span>
@@ -337,36 +343,66 @@ themeQ.addEventListener('change', refreshTheme);
 themeBtn.addEventListener('click', () => {
   themePref = isLight ? 'dark' : 'light';
   try { localStorage.setItem('theme', themePref); } catch (e) {}
-  const go = () => { refreshTheme(); };
+  const go = () => refreshTheme();
+  /* standard dissolve: the whole page cross-fades between the two modes */
   if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) document.startViewTransition(go);
   else { const r = document.documentElement; r.classList.add('theme-fade'); go(); setTimeout(() => r.classList.remove('theme-fade'), 1400); }
 });
-/* The canvas keeps the image's proportions and is as large as possible:
-   - landscape (desktop, tablet, phone): fits the whole screen (the header and footer only occupy the corners)
-   - portrait (phone and tablet): bottom limit = the gap between the footer icons and the image equals the gap between the (c)2026 and the page bottom
-   - portrait tablet: top limit = the gap between the animated line under the name and the image equals the gap between the name and the page top
-   - portrait phone: the top is the screen edge */
+/* Widths of the name: the letters D and G, and the two words fully unfolded (single line, or stacked: the wider word) */
+function nameMetrics() {
+  const nls = [...document.querySelectorAll('.site-name .nl')], nrs = [...document.querySelectorAll('.site-name .nr')];
+  let e = [0, 0]; try { e = [nameW[0], nameW[1]]; } catch (x) {}
+  const base = nls.map((nl, i) => nl.getBoundingClientRect().width - nrs[i].getBoundingClientRect().width);   // the letter alone
+  const full = base.map((b, i) => b + (e[i] || nrs[i].scrollWidth));                                          // the word fully unfolded
+  return { base, full };
+}
+/* The canvas keeps the image's proportions and is as large as possible without touching the header or footer, at ANY window size.
+   Everything is measured from the real elements (header, footer, name, icons, (c)2026), never from assumed sizes. Three layouts are tried; the largest wins:
+   - "side":  full page height, between the left items and the right items; the gap to them is G
+   - "stack": the same, but with the name stacked ("Demma" over "Guciàn") so it is narrower; used only when that is what lets the image reach the full height
+   - "band":  full width, between the header and the footer:
+       one gap G (= the gap between the name and the top of the page) is kept under the animated line of the name / the +, and above the footer icons;
+       the image is centered in the space left between header and footer, so both distances are always equal (and exactly G when the height is the limit) */
 function setBox() {
   const stage = document.getElementById('home');
-  const sw = stage.clientWidth, sh = stage.clientHeight;
-  const portrait = sh > sw, phone = sw <= 700;
-  let top = 0, bottom = 0;
-  if (portrait) {
-    if (!phone) {
-      const n = document.querySelector('.site-name').getBoundingClientRect();
-      top = n.bottom + 2 + n.top;   // +2: the animated line sits 2px below the name's box
-    }
-    const rows = [...document.querySelectorAll('.site-footer .social-links > div, .site-footer .theme-row')];
-    const iconsTop = Math.min(...rows.map(el => el.getBoundingClientRect().top));
-    const year = [...document.querySelectorAll('.site-footer .copyright')].pop().getBoundingClientRect();
-    bottom = sh - (iconsTop - (sh - year.bottom));   // image foot sits above the icons by the same gap the (c)2026 has to the page bottom
+  const sw = stage.clientWidth;
+  const R = sel => [...document.querySelectorAll(sel)].map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.height > 0);
+  const hdr = R('.site-header')[0], ftr = R('.site-footer')[0], nm = R('.site-name')[0], btn = R('.menu-btn')[0], line1 = R('.site-name .nl')[0];
+  const rows = R('.site-footer .social-links > div, .site-footer .theme-row'), years = R('.site-footer .copyright');
+  const themeBox = R('.site-footer .theme-stack')[0], socialBox = R('.site-footer .social-stack:not(.theme-stack)')[0];
+  let w = Math.min(sw, stage.clientHeight * aspect), regionTop = 0, regionBottom = stage.clientHeight, stacked = false;
+  if (hdr && ftr && nm && btn && line1 && rows.length && years.length && themeBox && socialBox) {
+    const pageTop = hdr.top, pageBottom = ftr.bottom, H = pageBottom - pageTop;   // the header sits at the top of the page and the footer at the bottom: the page frame
+    const g = nm.top - pageTop;                                                   // name -> top of the page
+    const Tabs = Math.max(line1.bottom + 2, btn.bottom) + g;                      // +2: the animated line sits 2px below the name's box
+    const Babs = Math.min(...rows.map(r => r.top)) - g;                           // the image ends one gap above the footer icons
+    const gx = g;                                                                 // the same gap is kept beside the image (to the name, the icons and the +)
+    const pr = parseFloat(getComputedStyle(document.querySelector('.site-header')).paddingRight) || 0;
+    const btnLeft = sw - pr - (parseFloat(getComputedStyle(document.getElementById('menuBtn')).marginRight) || 0) - btn.width;   // resting place of the +
+    const colW = Math.max(0, ...[...document.querySelectorAll('.main-nav a')].map(a => a.getBoundingClientRect().width));        // width of the stacked items
+    const rightEdge = Math.min(btnLeft, socialBox.left, sw - pr - colW);
+    const nmx = nameMetrics();
+    const side = nameW => Math.min(H * aspect, 2 * Math.max(0, Math.min(sw / 2 - Math.max(nm.left + nameW, themeBox.right), rightEdge - sw / 2) - gx));
+    const sA = side(nmx.full[0] + nmx.full[1]), sB = side(Math.max(...nmx.full));
+    const bandW = Math.min(sw, Math.max(0, Babs - Tabs) * aspect);
+    /* The image goes beside the header/footer items only when it can then use the FULL page height (name single-line, or stacked if that is what it takes).
+       Otherwise it neither fits the height nor (in a narrow window) the width, and it sits centered between header and footer with equal gaps. */
+    const full = H * aspect;
+    let mode = 'band';
+    if (sA >= full - 0.5) mode = 'side'; else if (sB >= full - 0.5) mode = 'stack';
+    w = mode === 'stack' ? sB : mode === 'side' ? sA : bandW;
+    stacked = mode === 'stack';
+    if (mode === 'band') { regionTop = Tabs; regionBottom = Babs; } else { regionTop = pageTop; regionBottom = pageBottom; }
   }
-  const w = sw, h = Math.max(0, sh - top - bottom);
+  const nameEl = document.querySelector('.site-name');
+  if (nameEl.classList.contains('stacked') !== stacked) nameEl.classList.toggle('stacked', stacked);
   cv.style.aspectRatio = aspect;
   cv.style.height = 'auto';
-  cv.style.width = `${Math.min(w, h * aspect)}px`;
+  cv.style.width = `${Math.max(1, w)}px`;
   cv.style.position = 'relative';
-  cv.style.top = `${(top - bottom) / 2}px`;   // the stage centers the canvas on the screen; this moves it to the middle of the free area
+  cv.style.top = '0px';
+  const r0 = cv.getBoundingClientRect();                                           // where the stage puts it; then it is moved to the middle of its free region
+  cv.style.top = `${regionTop + (regionBottom - regionTop - r0.height) / 2 - r0.top}px`;
 }
 function applyAspect(im) {
   const a = (im.naturalWidth || im.width) / (im.naturalHeight || im.height);
@@ -777,6 +813,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') showSection(
 if ('ResizeObserver' in window) new ResizeObserver(() => {
   if (!imgA) return; setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
   if (phase === 'dissolve') makeBlend(); draw(lastQ);
+  menuMeasure(true); menuDraw(mP);   // the image changed: row or column?
 }).observe(document.getElementById('home'));
 
 /* ===== Menu: a + that turns like a book page ===== */
@@ -787,7 +824,7 @@ const menuBtn = document.getElementById('menuBtn'), navEl = document.getElementB
 const flipEl = menuBtn.querySelector('.flip'), pulseEl = menuBtn.querySelector('.pulse'), glyphEl = menuBtn.querySelector('svg');
 const menuReduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let mP = 0, mTarget = 0, mDist = 1, mGap = 10, mAnim = 0, mTimer = 0, mCount = 0;   // mP: progress 0 (closed) to 1 (open)
-let mTurn = 0, mHome = false, mLeaving = false;            // mTurn: auto-close countdown (0-180, no visual rotation); mHome: a section is selected
+let mTurn = 0, mHome = false, mLeaving = false, mVertical = false;   // mVertical: the items unfold downwards (the row would overlap the image)            // mTurn: auto-close countdown (0-180, no visual rotation); mHome: a section is selected
 const mEase = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
 /* The name rests as "DG": "emma " and "uciàn" open from the left to the right as the page turns, and close the same way on the way back */
 const nameR = [...document.querySelectorAll('.site-name .nr')]; let nameW = [0, 0], nameE = 0;
@@ -796,14 +833,19 @@ function setNameOpen(e) {
   const total = (nameW[0] + nameW[1]) * e, w = [Math.min(nameW[0], total), Math.max(0, total - nameW[0])];
   nameR.forEach((el, i) => { el.style.width = w[i].toFixed(2) + 'px'; el.style.opacity = nameW[i] ? Math.min(1, w[i] / nameW[i] * 1.6).toFixed(3) : 0; });
 }
-function nameMeasure() {
+function nameMeasure(skip) {
   nameW = nameR.map(el => { el.style.width = 'auto'; const w = el.getBoundingClientRect().width; el.style.width = ''; return w; });
   // Preserve the intended open/closed state when fonts finish loading or the layout is remeasured.
   setNameOpen(nameCap);
+  if (imgA && !skip) {   // the open name's width is known now: lay the image out again so it stays clear of it
+    setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
+    if (phase === 'dissolve') makeBlend(); draw(lastQ);
+  }
 }
 let nameCap = 1, nameCapAnim = 0;   // nameCap: how open the name is allowed to be (1 = follows the menu, 0 = kept as DG)
 function nameCapTo(target, ms) {
   cancelAnimationFrame(nameCapAnim);
+  if (document.querySelector('.site-name').classList.contains('stacked')) ms = ms / 0.7;   // stacked (Demma over Guciàn): the fold / unfold runs 30% slower
   const from = nameCap, t0 = performance.now();
   if (menuReduce || !ms || from === target) { nameCap = target; setNameOpen(nameCap); return; }
   const tick = now => {
@@ -813,24 +855,40 @@ function nameCapTo(target, ms) {
   };
   nameCapAnim = requestAnimationFrame(tick);
 }
-function menuMeasure() {
+function menuMeasure(skip) {
   mGap = parseFloat(getComputedStyle(menuBtn).marginRight) || 0;
-  mDist = navEl.offsetWidth + mGap;                       // how far the page travels: the width of the items row
-  nameMeasure();
+  nameMeasure(skip);
+  navEl.classList.remove('vertical');
+  const rowW = navEl.offsetWidth;                          // width of the items laid out in one row
+  const sw = document.getElementById('home').clientWidth;
+  const pr = parseFloat(getComputedStyle(document.querySelector('.site-header')).paddingRight) || 0;
+  const left = sw - pr - (menuBtn.offsetWidth + mGap + rowW);            // left end of "- items" once open
+  const nm = document.querySelector('.site-name').getBoundingClientRect(), g = nm.top;
+  const nmx = nameMetrics(), dgRight = nm.left + (document.querySelector('.site-name').classList.contains('stacked') ? Math.max(...nmx.base) : nmx.base[0] + nmx.base[1]);   // the name is "DG" while the menu is open
+  const row = document.getElementById('menu').getBoundingClientRect(), c = cv.getBoundingClientRect();
+  mVertical = left < dgRight + g || (c.width > 0 && c.right + g > left && c.top < row.bottom + g);
+  navEl.classList.toggle('vertical', mVertical);
+  mDist = mVertical ? mGap : rowW + mGap;                  // how far the page travels (vertical: it does not travel, it turns in place)
 }
 function menuDraw(p) {
-  const e = mEase(p), pos = e * mDist, ang = 180 * e, flat = p <= 0 || p >= 1;
+  const e = mEase(p), pos = mVertical ? 0 : e * mDist, ang = 180 * e, flat = p <= 0 || p >= 1;
   setNameOpen(nameCap);
   menuBtn.style.transform = `translateX(${mDist - pos}px)`;
   flipEl.style.transform = flat ? 'none' : `perspective(260px) rotateY(${-ang}deg)`;
   /* on the back side the glyph is mirrored by the page turn; mirroring it back keeps the flip continuous (no jump at either end) */
   glyphEl.style.transform = !flat && ang >= 90 ? 'scaleX(-1)' : 'none';
   vBar.style.visibility = ang < 90 ? 'visible' : 'hidden';   // past the half turn the back side shows: a - sign
-  navEl.style.clipPath = `inset(-8px -8px -8px ${Math.max(0, mDist - pos - mGap)}px)`;   // items show only to the right of the page
+  if (mVertical) {                                           // the items unfold downwards from the - sign
+    navEl.style.clipPath = `inset(-8px -8px calc(${((1 - e) * 100).toFixed(2)}% - 8px) -8px)`; navEl.style.opacity = e.toFixed(3);
+  } else {
+    navEl.style.clipPath = `inset(-8px -8px -8px ${Math.max(0, mDist - pos - mGap)}px)`;   // items show only to the right of the page
+    navEl.style.opacity = '';
+  }
 }
 /* The breathing of the + (closed) and of the - (open). It follows one clock through the page turn, so it never restarts from the beginning of its loop. */
+let pulseT0 = 0;   // the breathing is at its brightest at this moment (it is moved to the end of the page turn when the - turns back into a +)
 function pulseTick(now) {
-  const f = (1 + Math.cos(2 * Math.PI * now / 3733)) / 2;           // 1 = brightest, 0 = dimmest
+  const f = (1 + Math.cos(2 * Math.PI * (now - pulseT0) / 3733)) / 2;           // 1 = brightest, 0 = dimmest
   const a = menuReduce ? 0 : 1;                                       // always pulsing: + closed, - open, and through the page turn
   const g = 1 - a * (1 - f);
   /* Wider breathing: the sign goes from a little darker (g = 0) to full brightness (g = 1), with a small size swing, and its glow follows. */
@@ -841,6 +899,7 @@ function pulseTick(now) {
 function menuRun(target, done) {
   cancelAnimationFrame(mAnim); mTarget = target;
   const from = mP, total = MENU.flipMs * Math.abs(target - from), t0 = performance.now();
+  if (target === 0) pulseT0 = t0 + total;   // closing: the + reaches full brightness exactly as the turn ends, and breathes down from there
   if (menuReduce || !total) { mP = target; menuDraw(mP); if (done) done(); return; }
   const tick = now => {
     const u = Math.min(1, (now - t0) / total); mP = from + (target - from) * u; menuDraw(mP);
