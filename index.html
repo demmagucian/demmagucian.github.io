@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Demma Guciàn</title>
 <style>
+  /* Self-hosted font (lives in the repo, so Android always gets it): put Arimo.ttf in a folder called "fonts" next to index.html */
+  @font-face { font-family: "Arimo"; src: local("Arimo"), url("fonts/Arimo.ttf") format("truetype"); font-weight: 400 700; font-style: normal; font-display: swap; }
   :root {
     color-scheme: dark;
     --ink: #ffffff;
@@ -28,7 +30,7 @@
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: manipulation; background: #000; color: var(--ink);
-    font-family: "SFMono-Regular", "SF Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-family: "Helvetica Neue", Helvetica, "Arimo", Arial, sans-serif;   /* Apple devices use Helvetica Neue; Android has neither, so it gets Arimo (same shapes and widths as Helvetica/Arial) */
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   .stage { position: fixed; z-index: 1; inset: 0; display: flex; align-items: center; justify-content: center;
     background: #000; touch-action: none; overscroll-behavior: none; transition: opacity .9s ease; }
@@ -137,42 +139,11 @@
   html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #e4dfd8; }   /* the sections fade to the wall tone instead of black */
   html[data-theme="light"] #c { background: transparent; }
   html[data-theme="light"] .stage canvas.reflection { mix-blend-mode: normal; opacity: .6; }
-
-  /* ===== Paper-sheet home: artwork files stay untouched; only their paper layers move ===== */
-  .stage canvas { opacity: 0 !important; pointer-events: none !important; }
-  .sheet-field { position: absolute; z-index: 3; inset: var(--header-h) 0 var(--footer-h); display: flex; align-items: center; justify-content: center;
-    overflow: hidden; touch-action: pan-y; pointer-events: auto; }
-  .sheet-track { position: absolute; left: 50%; top: 50%; display: flex; align-items: center; width: max-content; max-width: none;
-    transform: translate(-50%, -50%); }
-  .paper-sheet { position: relative; flex: 0 0 auto; width: clamp(165px, 23vw, 300px); margin-left: -clamp(36px, 5.06vw, 66px);
-    padding: clamp(6px, .75vw, 10px); background: #f3f0e9; border: 1px solid rgba(25, 22, 18, .13);
-    box-shadow: 0 5px 16px rgba(0,0,0,.18), 0 18px 42px rgba(0,0,0,.15);
-    transform-origin: 50% 55%; will-change: transform; backface-visibility: hidden; }
-  .paper-sheet:first-child { margin-left: 0; }
-  .paper-sheet img { display: block; width: 100%; height: auto; max-width: none; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-  .paper-sheet:nth-child(2) { margin-top: 18px; }
-  .paper-sheet:nth-child(3) { margin-top: -13px; }
-  .paper-sheet:nth-child(4) { margin-top: 10px; }
-  .paper-sheet:nth-child(1) { z-index: 1; }
-  .paper-sheet:nth-child(2) { z-index: 2; }
-  .paper-sheet:nth-child(3) { z-index: 3; }
-  .paper-sheet:nth-child(4) { z-index: 4; }
-  html[data-theme="light"] .paper-sheet { background: #f8f6f1; border-color: rgba(45, 38, 30, .15);
-    box-shadow: 0 5px 15px rgba(50,42,32,.10), 0 16px 36px rgba(50,42,32,.08); }
-  @media (max-width: 700px) {
-    .sheet-field { inset: var(--header-h) 0 var(--footer-h); }
-    .paper-sheet { width: clamp(112px, 32vw, 180px); margin-left: -clamp(34px, 9.6vw, 54px); padding: 5px; }
-    .paper-sheet:nth-child(2) { margin-top: 12px; }
-    .paper-sheet:nth-child(3) { margin-top: -9px; }
-    .paper-sheet:nth-child(4) { margin-top: 7px; }
-  }
-  @media (prefers-reduced-motion: reduce) { .paper-sheet { will-change: auto; } }
-
 </style>
 </head>
 <body>
 
-<div class="stage" id="home"><canvas class="ambilight" id="ambilight" aria-hidden="true"></canvas><canvas class="reflection" id="reflection" aria-hidden="true"></canvas><canvas id="c" aria-hidden="true"></canvas><div class="sheet-field" id="sheetField" aria-label="A collection of overlapping artwork sheets"><div class="sheet-track" id="sheetTrack"></div></div></div>
+<div class="stage" id="home"><canvas class="ambilight" id="ambilight" aria-hidden="true"></canvas><canvas class="reflection" id="reflection" aria-hidden="true"></canvas><canvas id="c"></canvas></div>
 <div class="caption"><span id="capTitle"></span> <span class="cap-num"><span id="nA"></span><span id="nB"></span></span></div>
 
 <header class="site-header">
@@ -1073,7 +1044,6 @@ function selectPortrait(k) {
 }
 
 start();
-initPaperSheets();
 
 const contentFrame = document.getElementById('contentFrame');
 const externalPage = document.getElementById('externalPage');
