@@ -44,7 +44,7 @@
   .fgrp { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen; }
   .fgrp.refl-g { opacity: .8; }
   /* Dark room: only light shapes it. A wall washed by the artwork's own colour (falls off into black), a faint warm light from above, and a floor with a soft horizon. Dark mode only. */
-  .room { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen; }
+  .room { display: none !important; }
   .room::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--room-h, 70%);
     background:
       radial-gradient(ellipse calc(var(--room-w, 600px) * 2.6) calc(var(--room-ih, 800px) * 1.3) at 50% calc(var(--room-y, 45%) - var(--room-ih, 800px) * .08), rgba(var(--ambilight-rgb), calc(.156 * var(--halo-k))), rgba(var(--ambilight-rgb), calc(.108 * var(--halo-k))) 55%, rgba(var(--ambilight-rgb), 0) 100%),
