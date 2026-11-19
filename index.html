@@ -128,20 +128,16 @@
 
   /* ===== Light mode: plain white background, dark ink ===== */
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 1.2s; animation-timing-function: cubic-bezier(.45, 0, .2, 1); }   /* smooth crossfade of the whole page */
-  html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .room, html.theme-fade .site-header *, html.theme-fade .site-footer * {
+  html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
     transition: background-color 1.2s ease, color 1.2s ease, box-shadow 1.2s ease, opacity 1.2s ease, text-shadow 1.2s ease !important; }   /* fallback when the browser has no view transitions */
-  .room { position: absolute; inset: 0; z-index: 0; opacity: 0; overflow: hidden; pointer-events: none; }
-  .room-panel { position: absolute; background: #fcfbff; clip-path: inset(-40px -40px 0 -40px); }   /* white canvas behind the artwork; its shadow is cut at the bottom edge */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32;
     /* light mode reverses the halo into a soft negative shadow (50% of the old size and strength) */
-    --img-halo: 0 1px 5.5px .5px rgba(35, 29, 23, .09), 0 0 19px 3.5px rgba(35, 29, 23, .06);
+    --img-halo: 0 1px 5.5px .5px rgba(35, 29, 23, .09), 0 0 19px 3.5px rgba(35, 29, 23, .06), 0 3.5px 12px rgba(38, 31, 24, .065), 0 .5px 2.5px rgba(38, 31, 24, .05);
     --txt-glow: 0 .5px 1px rgba(35, 29, 23, .08), 0 1px 3.5px rgba(35, 29, 23, .05);
     --txt-glow-sel: 0 .5px 1px rgba(35, 29, 23, .085), 0 1px 3px rgba(35, 29, 23, .05);
     --ico-glow: drop-shadow(0 .5px 1px rgba(35, 29, 23, .10)) drop-shadow(0 1px 2.5px rgba(35, 29, 23, .06)); }
   html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #e4dfd8; }   /* the sections fade to the wall tone instead of black */
   html[data-theme="light"] #c { background: transparent; }
-  html[data-theme="light"] .room { opacity: 1; }
-  html[data-theme="light"] .room-panel { box-shadow: 0 3.5px 12px rgba(38, 31, 24, .065), 0 .5px 2.5px rgba(38, 31, 24, .05); }
   html[data-theme="light"] .stage canvas.reflection { mix-blend-mode: normal; opacity: .6; }
 </style>
 </head>
@@ -316,7 +312,12 @@ CONFIG.portraits.forEach(p => {
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 /* ===== Footprint of the home image: halo + image + visible part of the reflection ===== */
 const HALO_PAD = 8;          // px the halo needs above and beside the image (the halo is now ~5px)
-const REFL_VIS = .65;        // share of the reflection that is really visible (it fades out), counted when the image is fitted between header and footer
+const REFL_ROOM = .24;       // landscape: height reserved under the image for "a bit" of reflection, as a share of the image height (the rest runs off behind the footer / screen edge)
+const REFL_ROOM_P = .14;     // portrait: same, shorter because the portrait reflection is shorter
+const LAND_SCALE = 1.25;     // landscape: the image is 25% bigger than the plain fit ...
+const LAND_SHRINK = .935;    // landscape: then scaled to 93.5% (= 15% smaller, then 10% bigger)
+const REFL_ROOM_MIN = .03;   // ... but always keeps at least this share of its height free under it (a sliver of reflection), so it never leaves the screen
+const SIDE_P = 3;            // portrait: the lateral space beside the image is this many times the landscape one
 const HALO_FULL_LUM = .30;   // overall image brightness at which the halo reaches its full (50%) strength
 let haloK = 0, haloKSet = -1;
 const glowCanvas = document.getElementById('ambilight');
@@ -333,7 +334,7 @@ const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContex
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
 const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
 const REFL_HEIGHT_P = .22;             // portrait (vertical) screens: much shorter reflection, so it fades out on its own instead of running down the page. Landscape is cut short by the screen edge, so it keeps REFL_HEIGHT
-const REFL_GAP = .5;                  // half the previous clean gap between the image and reflection
+const REFL_GAP = .5;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
 const REFL_PAD = .06;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
 const reflSharp = mk(), reflMed = mk(), reflHeavy = mk(), reflSmall = mk();
@@ -379,11 +380,11 @@ function buildSkTex(sw, sh) {
 function updateSkirt(sr, ir, h) {
   /* The skirt is an elliptical pool of light on the floor, centered a little below the screen's base line: its top is rounded and only
      reaches the base line faintly, so it grows out of the floor around the reflection instead of starting at the image's sides */
-  const spread = ir.width * (sr.height > sr.width ? SKIRT_SPREAD_P : SKIRT_SPREAD), up = 0, down = h * 1.1;   // up = 0: nothing rises beside the screen
+  const spread = Math.round(ir.width * (sr.height > sr.width ? SKIRT_SPREAD_P : SKIRT_SPREAD)), up = 0, down = Math.round(h * 1.1);   // up = 0: nothing rises beside the screen
   const SW = ir.width + 2 * spread, SH = up + down;
   skirtCanvas.style.display = 'block';
-  skirtCanvas.style.left = (ir.left - sr.left - spread) + 'px';
-  skirtCanvas.style.top = (ir.bottom - sr.top - up) + 'px';
+  skirtCanvas.style.left = (Math.round(ir.left - sr.left) - spread) + 'px';
+  skirtCanvas.style.top = (Math.round(ir.bottom - sr.top) - up) + 'px';
   skirtCanvas.style.width = SW + 'px'; skirtCanvas.style.height = SH + 'px';
   skirtCanvas.style.opacity = SKIRT_OPACITY;
   const sw = SKIRT_W, sh = Math.max(4, Math.round(sw * SH / SW)), y0 = Math.max(1, Math.round(sh * .2));   // y0: center of the pool, a bit below the screen's base line
@@ -446,12 +447,13 @@ function buildReflMask(rw, rh, padT) {
   reflMaskKey = rw + 'x' + rh + 'x' + padT;
 }
 function updateReflection(sr, ir) {
-  const h = ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT);   // vertical stage: brief reflection (and, through h, a brief skirt)
+  const h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));   // vertical stage: brief reflection (and, through h, a brief skirt); whole pixels, like the image
   if (!homeVisible || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; return; }   // hidden in the sections
-  const padPx = ir.width * REFL_PAD, W = ir.width + 2 * padPx;
+  const padPx = Math.round(ir.width * REFL_PAD), W = ir.width + 2 * padPx;                       // whole-pixel box, symmetric around the image: no half-pixel edges that can shift against it
+  const hide = Math.ceil(W / REFL_W);   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
   reflCanvas.style.display = 'block';
-  reflCanvas.style.left = (ir.left - sr.left - padPx) + 'px';
-  reflCanvas.style.top = (ir.bottom - sr.top + REFL_GAP) + 'px';
+  reflCanvas.style.left = (Math.round(ir.left - sr.left) - padPx) + 'px';
+  reflCanvas.style.top = (Math.round(ir.bottom - sr.top) - hide) + 'px';
   reflCanvas.style.width = W + 'px';
   reflCanvas.style.height = h + 'px';
   reflCanvas.style.transform = 'none';
@@ -561,17 +563,7 @@ let aspect = 3 / 4;
 /* ===== Light mode ===== */
 let themePref;
 const themeQ = matchMedia('(prefers-color-scheme: light)'), themePrefInit = new URLSearchParams(location.search).get('theme') || (() => { try { return localStorage.getItem('theme'); } catch (e) { return null; } })() || CONFIG.theme || 'auto';
-const roomEl = document.createElement('div'); roomEl.className = 'room';
-roomEl.innerHTML = '<div class="room-panel"></div>';
-document.getElementById('home').insertBefore(roomEl, document.getElementById('home').firstChild);
-const roomPanel = roomEl.querySelector('.room-panel');
 let isLight = false;
-function layoutRoom() {                                     // size the white backing panel to the artwork's box
-  const sr = document.getElementById('home').getBoundingClientRect(), r = cv.getBoundingClientRect();
-  if (!r.width || !r.height) return;
-  roomPanel.style.left = (r.left - sr.left) + 'px'; roomPanel.style.top = (r.top - sr.top) + 'px';
-  roomPanel.style.width = r.width + 'px'; roomPanel.style.height = r.height + 'px';
-}
 themePref = themePrefInit;
 const themeBtn = document.getElementById('themeBtn');
 function applyTheme() {
@@ -580,7 +572,7 @@ function applyTheme() {
   const to = isLight ? 'dark' : 'light'; themeBtn.setAttribute('aria-label', `Switch to ${to} mode`); themeBtn.title = `Switch to ${to} mode`;
 }
 applyTheme();
-const refreshTheme = () => { applyTheme(); if (imgA) { setBox(); size(); A = fit(imgA); draw(lastQ); } };
+const refreshTheme = () => { applyTheme(); if (imgA) { setBox(); size(); A = fit(imgA); draw(lastQ); } lastGlowUpdate = 0; updateAmbilight(performance.now()); };   // reflection, skirt and halo are redone in the same frame as the switch, so none of them lags behind the image
 themeQ.addEventListener('change', refreshTheme);
 themeBtn.addEventListener('click', () => {
   themePref = isLight ? 'dark' : 'light';
@@ -613,16 +605,17 @@ function setBox() {
   const hdr = R('.site-header')[0], ftr = R('.site-footer')[0], nm = R('.site-name')[0], btn = R('.menu-btn')[0], line1 = R('.site-name .nl')[0];
   const rows = R('.site-footer .social-links > div, .site-footer .theme-row');
   const themeBox = R('.site-footer .theme-stack')[0], socialBox = R('.site-footer .social-stack:not(.theme-stack)')[0];
-  /* The image is fitted as a GROUP: halo above + image + the visible part of its reflection (same reflection length rule as updateReflection) */
-  const vertical = stage.clientHeight > sw;
-  const sidePad = vertical ? HALO_PAD * 3 : HALO_PAD;                              // portrait screens: triple the lateral breathing room
-  const refl = vertical ? REFL_HEIGHT_P : REFL_HEIGHT, F = 1 + refl * REFL_VIS, HP = HALO_PAD + REFL_GAP;
-  const fitH = avail => Math.max(0, avail - HP) / F;                              // tallest image whose group fits in `avail` px of height
-  let w = Math.max(0, Math.min(sw - 2 * sidePad, fitH(stage.clientHeight) * aspect)), regionTop = 0, regionBottom = stage.clientHeight, stacked = false, footNew = 0;
+  /* The home image sits as LOW as possible: its reflection is mostly allowed to run off behind the footer / screen edge, so only room for "a bit" of it is reserved under the image.
+     Fitted as a group: halo above + image + that reserved reflection. Portrait windows keep 3x the lateral space. */
+  const port = stage.clientHeight > sw, room = port ? REFL_ROOM_P : REFL_ROOM, F = 1 + room, HP = HALO_PAD + REFL_GAP;
+  const lat = port ? HALO_PAD * SIDE_P : HALO_PAD;                                 // lateral space beside the image
+  const fitH = (avail, tm = HALO_PAD) => Math.max(0, avail - tm - REFL_GAP) / F;   // tallest image whose group fits in `avail` px of height, leaving `tm` px free above it
+  let w = Math.max(0, Math.min(sw - 2 * lat, fitH(stage.clientHeight) * aspect)), regionTop = 0, groupBottom = stage.clientHeight, imgBottomMax = null, topMin = HALO_PAD, centerBand = null, freeBottom = false, stacked = false, footNew = 0;
   if (hdr && ftr && nm && btn && line1 && rows.length && themeBox && socialBox) {
     const fs = footShift;                                                         // how far the footer is moved down right now
     const pageTop = hdr.top, pageBottom = ftr.bottom - fs, H = pageBottom - pageTop;   // the header sits at the top of the page and the footer at the bottom: the page frame
     const g = nm.top - pageTop;                                                   // name -> top of the page
+    const topM = Math.max(g, HALO_PAD);                                           // landscape: the image starts as far below the top of the page as the name does
     const Tabs = Math.max(line1.bottom, btn.bottom) + g;
     /* Header and footer bands: the footer group (icons + line + (c)2026) is taller than the name, so its band is taller. When the image sits between them,
        the footer groups are moved down a little (never closer than 8px to the bottom, and clear of the home bar) so that the two bands get closer to equal height. */
@@ -636,31 +629,50 @@ function setBox() {
     const colW = Math.max(0, ...[...document.querySelectorAll('.main-nav a')].map(a => a.getBoundingClientRect().width));        // width of the stacked items
     const rightEdge = Math.min(btnLeft, socialBox.left, sw - pr - colW);
     const nmx = nameMetrics();
-    const side = nameW => Math.min(fitH(H) * aspect, 2 * Math.max(0, Math.min(sw / 2 - Math.max(nm.left + nameW, themeBox.right), rightEdge - sw / 2) - gx - sidePad));
+    const side = nameW => Math.min(fitH(H, topM) * aspect, 2 * Math.max(0, Math.min(sw / 2 - Math.max(nm.left + nameW, themeBox.right), rightEdge - sw / 2) - gx - HALO_PAD));
     const sA = side(nmx.full[0] + nmx.full[1]), sB = side(Math.max(...nmx.full));
-    const bandW = Math.max(0, Math.min(sw - 2 * sidePad, fitH(Babs - Tabs) * aspect));
+    const A = Babs - Tabs, fb = pageBottom - Babs;                                // free band between header and footer, and the footer band below it
+    let bandH;
+    if (port) bandH = Math.min(A - 2 * HALO_PAD, (A + 2 * fb) / (1 + 2 * room));   // portrait: centered, the reserved reflection still fits in the lower half
+    else {
+      const hBase = Math.min(fitH(pageBottom - Tabs, 0), A);                        // landscape fit: group down to the page bottom, image above the footer icons
+      const hWant = Math.min(hBase * LAND_SCALE, (pageBottom - Tabs - REFL_GAP) / (1 + REFL_ROOM_MIN)) * LAND_SHRINK;   // bigger, never off the screen, then scaled by LAND_SHRINK
+      const wWant = Math.min(sw - 2 * lat, hWant * aspect);
+      freeBottom = (sw - wWant) / 2 >= Math.max(themeBox.right, sw - socialBox.left) + gx;   // clear of the corner icons, so it may run down beside them
+      bandH = freeBottom ? hWant : Math.min(hBase * LAND_SCALE * LAND_SHRINK, A);
+    }
+    const bandW = Math.max(0, Math.min(sw - 2 * lat, bandH * aspect));
     /* The image goes beside the header/footer items only when it can then use the FULL page height (name single-line, or stacked if that is what it takes).
        Otherwise it neither fits the height nor (in a narrow window) the width, and it sits centered between header and footer with equal gaps. */
-    const full = fitH(H) * aspect;
+    const full = fitH(H, topM) * aspect;
     let mode = 'band';
-    if (sA >= full - 0.5) mode = 'side'; else if (sB >= full - 0.5) mode = 'stack';
+    /* The image never sits beside the name any more: it always starts below the header row, one name-to-top distance (g) under 'Demma Gucian'. */
     w = mode === 'stack' ? sB : mode === 'side' ? sA : bandW;
     stacked = mode === 'stack';
     footNew = mode === 'band' ? shift : 0;                                        // the footer only moves when the image sits between header and footer
-    if (mode === 'band') { regionTop = Tabs; regionBottom = Babs; } else { regionTop = pageTop; regionBottom = pageBottom; }
+    if (mode === 'band') { regionTop = Tabs; groupBottom = pageBottom; imgBottomMax = freeBottom ? null : Babs; if (port) centerBand = [Tabs, Babs]; else topMin = 0; }
+    else { regionTop = pageTop; groupBottom = pageBottom; topMin = topM; }
   }
   if (footNew !== footShift) { footShift = footNew; document.querySelector('.site-footer').style.setProperty('--foot-shift', footNew + 'px'); }
   const nameEl = document.querySelector('.site-name');
   if (nameEl.classList.contains('stacked') !== stacked) nameEl.classList.toggle('stacked', stacked);
+  /* Whole-pixel box: width and height are integers and leave equal whole-pixel margins, so the image never sits on a half pixel.
+     A half-pixel edge shows the halo / white panel behind it as a thin light line at the side and makes the image seem to jump when the mode changes. */
+  let wi = Math.max(1, Math.round(w));
+  if ((sw - wi) % 2) wi = Math.max(1, wi - 1);
+  let hi = Math.max(1, Math.round(wi / aspect));
+  if ((stage.clientHeight - hi) % 2) hi = Math.max(1, hi - 1);
   cv.style.aspectRatio = aspect;
-  cv.style.height = 'auto';
-  cv.style.width = `${Math.max(1, w)}px`;
+  cv.style.width = `${wi}px`;
+  cv.style.height = `${hi}px`;
   cv.style.position = 'relative';
   cv.style.top = '0px';
   const r0 = cv.getBoundingClientRect();                                           // where the stage puts it; then it is moved to the middle of its free region
-  const grp = HALO_PAD + r0.height * F + REFL_GAP;                                   // halo + image + visible reflection, centered together
-  cv.style.top = `${regionBottom - grp + HALO_PAD - r0.top}px`;  // bottom-anchor the artwork; only the available reflection extends below it
-  if (isLight) layoutRoom();
+  let yb = groupBottom - room * r0.height - REFL_GAP;                              // image bottom: as low as possible, leaving room for a bit of the reflection
+  if (imgBottomMax !== null) yb = Math.min(yb, imgBottomMax);                       // band layout: never closer than one gap to the footer icons
+  let top = Math.max(yb - r0.height, regionTop + topMin);                           // and never above the header limit (landscape: the name's distance from the top)
+  if (centerBand) top = centerBand[0] + (centerBand[1] - centerBand[0] - r0.height) / 2;   // portrait: the image stays in the middle between header and footer
+  cv.style.top = `${Math.round(top - r0.top)}px`;
   lastGlowUpdate = 0;                                                               // redraw halo, reflection and skirt for the new box
 }
 function applyAspect(im) {
