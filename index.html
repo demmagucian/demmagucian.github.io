@@ -178,8 +178,9 @@
     --ico-glow: drop-shadow(0 .5px 1px rgba(35, 29, 23, .10)) drop-shadow(0 1px 2.5px rgba(35, 29, 23, .06)); }
   html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #e4dfd8; }   /* the sections fade to the wall tone instead of black */
   html[data-theme="light"] #c { background: transparent; }
-  html[data-theme="light"] .fgrp { mix-blend-mode: multiply; }
-  html[data-theme="light"] .fgrp.refl-g { opacity: .9; }
+  html[data-theme="light"] .fgrp { mix-blend-mode: normal; }   /* plain alpha instead of multiply: looks the same in every browser (Safari rendered multiply as a pale fog) */
+  html[data-theme="light"] .fgrp.refl-g { opacity: .78; }
+  html[data-theme="light"] .fgrp.skirt-g { opacity: .35; }
   html[data-theme="light"] .contact { background: rgba(34, 27, 21, .62); }
 </style>
 </head>
@@ -378,7 +379,7 @@ const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContex
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
 const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
 const REFL_HEIGHT_P = .22;             // portrait (vertical) screens: much shorter reflection, so it fades out on its own instead of running down the page. Landscape is cut short by the screen edge, so it keeps REFL_HEIGHT
-const REFL_SPACING = 0.25;             // CSS px of floor visible between the foot of the image and the start of the reflection (0 = touching). Drawn in whole DEVICE pixels, so the smallest visible gap is 1 device px (0.5 px on a 2x iPad, 0.33 px on 3x)
+const REFL_SPACING = 0;                // CSS px of floor visible between the foot of the image and the start of the reflection (0 = touching). Drawn in whole DEVICE pixels, so the smallest visible gap is 1 device px (0.5 px on a 2x iPad, 0.33 px on 3x)
 const REFL_GAP = 0;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
 const REFL_PAD = .06;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
