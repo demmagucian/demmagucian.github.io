@@ -44,7 +44,7 @@
   .fgrp { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen; }
   .fgrp.refl-g { opacity: .8; }
   /* Dark room: only light shapes it. A wall washed by the artwork's own colour (falls off into black), a faint warm light from above, and a floor with a soft horizon. Dark mode only. */
-  .room { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen; }
+  .room { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
   .room::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--room-h, 70%);
     background:
       radial-gradient(ellipse calc(var(--room-w, 600px) * 2.6) calc(var(--room-ih, 800px) * 1.3) at 50% calc(var(--room-y, 45%) - var(--room-ih, 800px) * .08), rgba(var(--ambilight-rgb), calc(.156 * var(--halo-k))), rgba(var(--ambilight-rgb), calc(.108 * var(--halo-k))) 55%, rgba(var(--ambilight-rgb), 0) 100%),
@@ -52,10 +52,32 @@
     -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), rgba(0, 0, 0, .35)); mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), rgba(0, 0, 0, .35)); }
   .room::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; top: var(--room-h, 70%);
     background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), calc(.072 * var(--halo-k))), rgba(var(--ambilight-rgb), 0) 85%); }
-  .grain { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen; opacity: .042;
+  .grain { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .042;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 240px 240px; }   /* film grain on the dark room: static, so it never flickers; the image is above it */
-  html[data-theme="light"] .room, html[data-theme="light"] .grain { display: none; }
-  .contact { position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;   /* hairline of shade where the artwork meets the floor */
+  /* Light room with depth. The back wall is plaster lit from above-left: a pool of gallery light, a darker ceiling edge, side walls turning away at both ends,
+     and a very fine plaster relief. The floor is a little darker, with a soft horizon. */
+  html[data-theme="light"] .room::before {
+    -webkit-mask-image: none; mask-image: none;
+    background:
+      linear-gradient(to bottom, rgba(40, 30, 20, .13), rgba(40, 30, 20, 0) 110px),
+      linear-gradient(to right, rgba(40, 30, 20, .12), rgba(40, 30, 20, .05) 7%, rgba(40, 30, 20, 0) 21%, rgba(40, 30, 20, 0) 78%, rgba(40, 30, 20, .07) 92%, rgba(40, 30, 20, .17)),
+      radial-gradient(ellipse 75% 95% at 44% 0%, rgba(255, 252, 246, .62), rgba(255, 252, 246, .2) 55%, rgba(255, 252, 246, 0) 100%),
+      radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * 1.25) at 50% calc(var(--room-y, 45%) - var(--room-ih, 800px) * .08), rgba(255, 251, 244, .4), rgba(255, 251, 244, .14) 55%, rgba(255, 251, 244, 0) 100%),
+      radial-gradient(ellipse calc(var(--room-w, 600px) * 2.6) calc(var(--room-ih, 800px) * 1.3) at 50% calc(var(--room-y, 45%) - var(--room-ih, 800px) * .08), rgba(var(--ambilight-rgb), calc(.07 * var(--halo-k))), rgba(var(--ambilight-rgb), 0) 100%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='640'%3E%3Cfilter id='p' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.04' numOctaves='3' seed='11' stitchTiles='stitch' result='n'/%3E%3CfeDiffuseLighting in='n' lighting-color='%23ffffff' surfaceScale='1.1'%3E%3CfeDistantLight azimuth='225' elevation='58'/%3E%3C/feDiffuseLighting%3E%3CfeColorMatrix values='0 0 0 0 .16 0 0 0 0 .12 0 0 0 0 .08 -.75 0 0 0 .68'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E"); }
+  html[data-theme="light"] .room::after {
+    background:
+      linear-gradient(to bottom, rgba(40, 30, 20, .08), rgba(40, 30, 20, 0) 40px),
+      radial-gradient(ellipse calc(var(--room-w, 600px) * 2.2) 70% at 50% 0%, rgba(255, 251, 244, .3), rgba(255, 251, 244, 0) 100%),
+      linear-gradient(to bottom, rgba(60, 46, 32, .1), rgba(60, 46, 32, .05) 40%, rgba(60, 46, 32, .13) 100%); }
+  html[data-theme="light"] { --img-halo: 0 1px 5.5px .5px rgba(35, 29, 23, .09), 0 0 19px 3.5px rgba(35, 29, 23, .06), 0 3.5px 12px rgba(38, 31, 24, .065), 0 .5px 2.5px rgba(38, 31, 24, .05), 12px 4px 34px -4px rgba(35, 29, 23, .13), 34px 10px 80px -8px rgba(35, 29, 23, .09); }   /* the artwork stands off the wall: a soft shadow falls to the right (light comes from the upper left) and stops at the floor line */
+  html[data-theme="light"] #c { clip-path: inset(-100px -100px 0 -100px); }
+  /* Light mode room PHOTO: stretched so its white lightbox sits exactly behind the artwork (see ROOM_PHOTO in the script). If the file is missing, the CSS room above stays. */
+  .roomphoto { display: none; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: no-repeat; }
+  html.has-roomphoto[data-theme="light"] .roomphoto { display: block; }
+  html.has-roomphoto[data-theme="light"] .room, html.has-roomphoto[data-theme="light"] .grain { display: none; }
+  html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .contact { display: none !important; position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;   /* hairline of shade where the artwork meets the floor */
     background: linear-gradient(to bottom, rgba(0, 0, 0, .5), rgba(0, 0, 0, 0));
     -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); }
   #c { position: relative; z-index: 1; background: #000; transform-origin: 50% 100%;   /* the press-zoom grows upward from the bottom edge: the image can never sink onto the reflection */     /* image always on top of the halo and fully opaque */
@@ -71,14 +93,15 @@
   /* When the image cannot keep the page margin as its distance from the name, the name stacks: "Demma" above "Guciàn" (folded: D above G). Each word still unfolds to the right. */
   .site-name.stacked { display: inline-flex; flex-direction: column; align-items: flex-start; height: auto; align-self: flex-start; margin-top: calc((var(--header-h) - var(--row-h)) / 2); }
   .site-name .nr { display: inline-block; vertical-align: top; height: var(--row-h); line-height: var(--row-h); width: 0; opacity: 0; white-space: pre;
-    clip-path: inset(-30px 0 -30px 0); will-change: width, opacity; }   /* clips only the sides, so the glow of the letters is not cut above and below */
+    clip-path: inset(-30px 0 -30px 0); }   /* clips only the sides, so the glow of the letters is not cut above and below */
   .menu { position: relative; margin-left: auto; display: flex; align-items: center; height: var(--row-h); }
   .main-nav { display: flex; align-items: center; gap: .5em; text-transform: lowercase; visibility: hidden; height: var(--row-h); }   /* hidden until the + opens it */
   .menu-btn { --plus: calc(var(--site-type) * 1.125); font-size: var(--site-type); flex: none; position: relative; width: var(--row-h); height: var(--row-h); margin-right: .5em; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; will-change: transform; transform-origin: 50% 50%;
     filter: var(--ico-glow); }
   .menu-btn .flip { display: block; width: var(--plus); height: var(--plus); will-change: transform; transform-origin: 50% 50%; }   /* carries the page turn; the "home" word stays outside it */
-  .menu-btn .pulse { display: block; width: var(--plus); height: var(--plus); will-change: transform, opacity; }   /* the breathing of the + is driven from the script, so it never jumps */
+  .menu-btn .pulse { display: block; width: var(--plus); height: var(--plus); will-change: transform, opacity;
+    filter: drop-shadow(0 0 5.5px rgba(var(--ink-rgb), .33)) drop-shadow(0 0 12px rgba(var(--ink-rgb), .17)); }   /* the breathing of the + is driven from the script, so it never jumps */
   .menu-btn svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; overflow: visible; transition: opacity .45s ease; }
   /* When the opened row would overlap the image (or the name), the items unfold downwards from the right, one below the other, under the - which stays where the + was */
   .main-nav.vertical { position: absolute; top: calc(100% + 8px); right: 0; height: auto; flex-direction: column; align-items: flex-end; gap: 9px; }
@@ -344,7 +367,8 @@ let lastReflSig = '', lastReflDraw = 0;   // the reflection and skirt are only r
 const glowCanvas = document.getElementById('ambilight');
 const GLOW_W = 40;
 const midCanvas = document.createElement('canvas'), midCtx = midCanvas.getContext('2d');
-const glowCtx = glowCanvas.getContext('2d');
+const glowCtx = glowCanvas.getContext('2d', { willReadFrequently: true });
+let lastRgb = '', lastVarSet = 0, menuBusyUntil = 0, lastDrawT = 0;   // menuBusyUntil: while the name / menu animate, the image loop and the glow wait so the header gets every frame
 let lastGlowUpdate = 0, homeVisible = true, homeHideTimer = 0;   // homeVisible: false once the stage has faded out, so nothing is drawn behind the sections
 const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d', { willReadFrequently: true });
 const reflMid = document.createElement('canvas'), reflMidCtx = reflMid.getContext('2d');
@@ -355,7 +379,7 @@ const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContex
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
 const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
 const REFL_HEIGHT_P = .22;             // portrait (vertical) screens: much shorter reflection, so it fades out on its own instead of running down the page. Landscape is cut short by the screen edge, so it keeps REFL_HEIGHT
-const REFL_GAP = .5;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
+const REFL_GAP = 0;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
 const REFL_PAD = .06;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
 const reflSharp = mk(), reflMed = mk(), reflHeavy = mk(), reflSmall = mk();
@@ -410,6 +434,11 @@ const fxS = { key: '', on: false }, fxR = { key: '', on: false };
 const roomEl = document.createElement('div'); roomEl.className = 'room'; roomEl.setAttribute('aria-hidden', 'true');
 homeEl.insertBefore(roomEl, homeEl.firstChild);
 let lastRoom = '';
+/* The photo is padded around the original (420 px left/right, 300 px top/bottom) so it can be stretched to any window. panel = the white lightbox inside the padded file. */
+const ROOM_PHOTO = { src: 'background_light.jpg', w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3 };
+const roomPhotoEl = document.createElement('div'); roomPhotoEl.className = 'roomphoto'; roomPhotoEl.setAttribute('aria-hidden', 'true');
+homeEl.insertBefore(roomPhotoEl, homeEl.firstChild);
+{ const im = new Image(); im.onload = () => { roomPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; document.documentElement.classList.add('has-roomphoto'); lastRoom = ''; lastGlowUpdate = 0; }; im.src = ROOM_PHOTO.src; }
 const grainEl = document.createElement('div'); grainEl.className = 'grain'; grainEl.setAttribute('aria-hidden', 'true'); homeEl.appendChild(grainEl);
 /* The image box WITHOUT the press-zoom transform (getBoundingClientRect includes it, which made the reflection jump, re-key and sit under the image) */
 function imgBox() {
@@ -531,7 +560,7 @@ function updateReflection(sr, ir) {
   const h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));   // vertical stage: brief reflection (and, through h, a brief skirt); whole pixels, like the image
   if (!homeVisible || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; reflOld.style.display = 'none'; skirtOld.style.display = 'none'; contactEl.style.display = 'none'; fxR.key = fxS.key = ''; return; }   // hidden in the sections
   const padPx = Math.round(ir.width * REFL_PAD), W = ir.width + 2 * padPx;                       // whole-pixel box, symmetric around the image: no half-pixel edges that can shift against it
-  const hide = -0.75;   // negative = the reflection starts this many px BELOW the foot of the image   // was Math.ceil(W / REFL_W): the reflection was pushed up UNDER the image, so the image covered its first rows and the mirror was shifted; it now starts exactly at the foot of the image   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
+  const hide = 1;   // negative = the reflection starts this many px BELOW the foot of the image   // was Math.ceil(W / REFL_W): the reflection was pushed up UNDER the image, so the image covered its first rows and the mirror was shifted; it now starts exactly at the foot of the image   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
   const rl = Math.round(ir.left - sr.left) - padPx, rt = Math.round(ir.bottom - sr.top) - hide;
   fadeBegin(reflCanvas, reflOld, fxR, `${rl}|${rt}|${W}|${h}|${isLight}`);
   const ch = Math.min(7, Math.max(3, Math.round(ir.height * .007)));      // contact shade: a few px, sized to the image
@@ -618,8 +647,8 @@ function updateAmbilight(now) {
     const pixels = glowCtx.getImageData(0, 0, gw, gh).data;
     let sg = 0; for (let i = 0; i < pixels.length; i++) sg = (sg * 31 + pixels[i]) | 0;
     const sig = sg + '|' + [ir.left, ir.top, ir.width, ir.height, sr.width, sr.height, isLight, homeVisible].join('|');
-    doRefl = sig !== lastReflSig || now - lastReflDraw > 500;   // also refreshed twice a second, in case a change is too fine for the small sample
-    lastReflSig = sig;
+    doRefl = (sig !== lastReflSig && now - lastReflDraw > 200) || now - lastReflDraw > 500;
+    if (doRefl) lastReflSig = sig;
     let r = 0, g = 0, b = 0, weight = 0, lumSum = 0, aSum = 0;
     for (let i = 0; i < pixels.length; i += 16) {
       const alpha = pixels[i + 3] / 255;
@@ -631,16 +660,22 @@ function updateAmbilight(now) {
       r += pixels[i] * w; g += pixels[i + 1] * w; b += pixels[i + 2] * w; weight += w;
     }
     const root = document.documentElement;
-    if (weight > 0.5) root.style.setProperty('--ambilight-rgb', `${Math.round(r / weight)}, ${Math.round(g / weight)}, ${Math.round(b / weight)}`);
+    if (weight > 0.5) {
+      const q = v => Math.min(255, Math.round(v / weight / 8) * 8), c = `${q(r)}, ${q(g)}, ${q(b)}`;
+      if (c !== lastRgb && now - lastVarSet > 400) { lastRgb = c; lastVarSet = now; root.style.setProperty('--ambilight-rgb', c); }
+    }
     const mean = aSum ? lumSum / aSum : 0;
     haloK += (Math.min(1, Math.pow(mean / HALO_FULL_LUM, 1.2)) - haloK) * .35;   // eased, so the halo follows the image changes smoothly
-    if (Math.abs(haloK - haloKSet) > .004) { haloKSet = haloK; root.style.setProperty('--halo-k', haloK.toFixed(3)); }
+    if (Math.abs(haloK - haloKSet) > .03) { haloKSet = haloK; root.style.setProperty('--halo-k', haloK.toFixed(3)); }
   } catch (err) {
     // If pixel sampling is blocked by the browser, the halo keeps its last value.
   }
-  const roomSig = [ir.width, ir.height, ir.top - sr.top].join('|');
+  const roomSig = [ir.width, ir.height, ir.top - sr.top, ir.left - sr.left, sr.width, sr.height].join('|');
   if (roomSig !== lastRoom) {   // wall light centred on the image; the floor/wall horizon sits a little above the foot of the image
     lastRoom = roomSig;
+    { const R = ROOM_PHOTO, k = R.inset, sx = Math.max(1, ir.width - 2 * k) / R.pw, sy = Math.max(1, ir.height - 2 * k) / R.ph;   // the photo's lightbox is stretched to sit just inside the artwork, so the artwork hides it exactly
+      roomPhotoEl.style.backgroundSize = `${(R.w * sx).toFixed(2)}px ${(R.h * sy).toFixed(2)}px`;
+      roomPhotoEl.style.backgroundPosition = `${(ir.left - sr.left + k - R.px * sx).toFixed(2)}px ${(ir.top - sr.top + k - R.py * sy).toFixed(2)}px`; }
     homeEl.style.setProperty('--room-w', ir.width + 'px'); homeEl.style.setProperty('--room-ih', ir.height + 'px');
     homeEl.style.setProperty('--room-y', Math.round(ir.top - sr.top + ir.height * .5) + 'px');
     homeEl.style.setProperty('--room-h', Math.round(ir.bottom - sr.top - ir.height * .12) + 'px');
@@ -796,7 +831,8 @@ const showCaption = i => { nA.textContent = label(i); nB.textContent = ''; setCa
 /* ===== Activity: how strongly the pointer is affecting the image right now ===== */
 const act = { speed: 0, motion: 0, coverage: 0, path: [], pulse: 0, lastX: 0, lastY: 0, lastT: 0, px: .5, py: .5, lx: .5, ly: .5, zoom: 1 };   // coverage measures the recent area swept by the pointer
 const gest = { down: false, moved: false, sx: 0, sy: 0 };
-function aim(e) { const r = cv.getBoundingClientRect(); act.px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); act.py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)); }
+let cvRect = null;
+function aim(e) { const r = cvRect || (cvRect = cv.getBoundingClientRect()); act.px = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); act.py = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)); }
 function poke(x, y, now) {                           // pointer velocity + recent spatial coverage
   if (act.lastT) act.speed = act.speed * .5 + Math.hypot(x - act.lastX, y - act.lastY) / Math.max(1, now - act.lastT) * 1000 * .5;
   act.lastX = x; act.lastY = y; act.lastT = now;
@@ -1043,6 +1079,8 @@ async function jump() {
 }
 
 function frame(now) {
+  cvRect = null;
+  const busy = now < menuBusyUntil;
   const dt = Math.min(now - lastNow, 50); lastNow = now;
   const RC = CONFIG.react;
   if (heldHas && CONFIG.selectionHoldMs && performance.now() - heldAt > CONFIG.selectionHoldMs) releaseHeld();   // a lock lets go by itself
@@ -1067,13 +1105,13 @@ function frame(now) {
   } else { effE = 0; lensLevel = 0; }
   act.zoom += ((gest.down ? 1 + RC.zoom : 1) - act.zoom) * (1 - Math.exp(-dt / 90));       // a tiny grow while pressed
   cv.style.transform = Math.abs(act.zoom - 1) < .00005 ? '' : `scale(${act.zoom})`;
-  if (phase === 'dissolve') {
+  if (busy) { /* menu animating: the loop waits */ } else if (phase === 'dissolve') {
     prog += dt / curMs * (1 + RC.boost * effE);      // fast, broad pointer movement makes the autoloop accelerate
     if (prog >= 1) { draw(1); imgA = imgB; A = B; idxA = idxB; lastQ = 0; showCaption(idxA); prog = 0; phase = 'hold'; t0 = now; }
-    else draw(heldHas && CONFIG.flashMs ? flash(prog) : CONFIG.ease ? prog * prog * (3 - 2 * prog) : prog);
+    else if (now - lastDrawT >= 22) { lastDrawT = now; draw(heldHas && CONFIG.flashMs ? flash(prog) : CONFIG.ease ? prog * prog * (3 - 2 * prog) : prog); }   // ~45 fps is plenty for a slow dissolve (120 Hz screens drew it 120x a second)
   } else if (phase === 'hold' && (now - t0 >= CONFIG.holdMs || (RC.skipHold && effE > .3))) { phase = 'loading'; advance(); }
   if (fadeAt && phase !== 'dissolve') draw(lastQ);  // keep the unlock fade moving during a pause
-  updateAmbilight(now);                             // halo, reflection and skirt follow every image transition
+  if (!busy) updateAmbilight(now);                  // halo, reflection and skirt follow every image transition
   requestAnimationFrame(frame);
 }
 
@@ -1210,10 +1248,11 @@ function setNameOpen(e) {
   nameR.forEach((el, i) => { el.style.width = w[i].toFixed(2) + 'px'; el.style.opacity = nameW[i] ? Math.min(1, w[i] / nameW[i] * 1.6).toFixed(3) : 0; });
 }
 function nameMeasure(skip) {
+  const prev = nameW;
   nameW = nameR.map(el => { el.style.width = 'auto'; const w = el.getBoundingClientRect().width; el.style.width = ''; return w; });
-  // Preserve the intended open/closed state when fonts finish loading or the layout is remeasured.
   setNameOpen(nameCap);
-  if (imgA && !skip) {   // the open name's width is known now: lay the image out again so it stays clear of it
+  const changed = nameW.some((w, i) => Math.abs(w - (prev[i] || 0)) > .5);   // only re-lay out the image when the name width really changed
+  if (imgA && !skip && changed) {
     setBox(); size(); A = fit(imgA); B = imgB && phase === 'dissolve' ? fit(imgB) : B;
     if (phase === 'dissolve') makeBlend(); draw(lastQ);
   }
@@ -1223,6 +1262,7 @@ function nameCapTo(target, ms) {
   cancelAnimationFrame(nameCapAnim);
   if (document.querySelector('.site-name').classList.contains('stacked')) ms = ms / 0.7;   // stacked (Demma over Guciàn): the fold / unfold runs 30% slower
   const from = nameCap, t0 = performance.now();
+  menuBusyUntil = Math.max(menuBusyUntil, t0 + ms + 200);
   if (menuReduce || !ms || from === target) { nameCap = target; setNameOpen(nameCap); return; }
   const tick = now => {
     const u = Math.min(1, (now - t0) / ms); nameCap = from + (target - from) * mEase(u);
@@ -1270,12 +1310,12 @@ function pulseTick(now) {
   /* Wider breathing: the sign goes from a little darker (g = 0) to full brightness (g = 1), with a small size swing, and its glow follows. */
   pulseEl.style.opacity = (.56 + .44 * g).toFixed(3);
   pulseEl.style.transform = `scale(${(.98 + .05 * g).toFixed(3)})`;
-  pulseEl.style.filter = `drop-shadow(0 0 ${(3 + 5 * g).toFixed(2)}px rgba(var(--ink-rgb), ${(.24 + .19 * g).toFixed(3)})) drop-shadow(0 0 ${(7 + 11 * g).toFixed(2)}px rgba(var(--ink-rgb), ${(.09 + .15 * g).toFixed(3)}))`;   // 50% of the previous glow
   requestAnimationFrame(pulseTick);
 }
 function menuRun(target, done) {
   cancelAnimationFrame(mAnim); mTarget = target;
   const from = mP, total = MENU.flipMs * Math.abs(target - from), t0 = performance.now();
+  menuBusyUntil = t0 + total + 200;
   if (target === 0) pulseT0 = t0 + total;   // closing: the + reaches full brightness exactly as the turn ends, and breathes down from there
   if (menuReduce || !total) { mP = target; menuDraw(mP); if (done) done(); return; }
   const tick = now => {
