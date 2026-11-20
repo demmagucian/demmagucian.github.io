@@ -503,6 +503,16 @@ function updateReflection(sr, ir) {
 let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0;
 const pics = {}, info = {}, loads = {};          // pics[mode]: the decoded image; info[mode]: its glow colour and brightness (read once); loads[mode]: the loading promise
 const wait = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+/* Add ?debug to the address (e.g. demmagucian.github.io/?debug) to see on screen what loaded and what failed */
+const DEBUG = new URLSearchParams(location.search).has('debug');
+function dbg(msg) {
+  if (!DEBUG) return;
+  let el = document.getElementById('dbg');
+  if (!el) { el = document.createElement('pre'); el.id = 'dbg'; el.style.cssText = 'position:fixed;z-index:200;left:8px;right:8px;bottom:56px;margin:0;padding:8px;font:11px/1.35 monospace;color:#7CFC9A;background:rgba(0,0,0,.8);white-space:pre-wrap;pointer-events:none;user-select:text'; document.body.appendChild(el); }
+  el.textContent += msg + '\n';
+}
+addEventListener('error', e => dbg('error: ' + e.message));
+addEventListener('unhandledrejection', e => dbg('rejected: ' + e.reason));
 
 /* ===== Theme ===== */
 const themeQ = matchMedia('(prefers-color-scheme: light)'), reduceQ = matchMedia('(prefers-reduced-motion: reduce)');
@@ -535,11 +545,16 @@ function analyze(im) {   // glow colour (lit pixels only) and overall brightness
 }
 function loadMode(m) {
   return loads[m] || (loads[m] = new Promise(res => {
-    const im = new Image();
-    const done = () => { pics[m] = im; info[m] = analyze(im); res(im); };
-    im.onload = () => (im.decode ? im.decode().then(done, done) : done());
-    im.onerror = () => res(null);
-    im.src = `${CONFIG.images[m]}?v=${CONFIG.v}`;
+    const im = new Image(), src = `${CONFIG.images[m]}?v=${CONFIG.v}`;
+    const done = () => {
+      if (!im.naturalWidth) { console.warn('Could not decode ' + src); dbg(`${m}: could not decode ${src}`); res(null); return; }
+      try { info[m] = analyze(im); } catch (e) { dbg(`${m}: analyze failed ${e}`); }
+      pics[m] = im; dbg(`${m}: loaded ${im.naturalWidth}x${im.naturalHeight}`); res(im);
+      if (revealed && !curImg && m === (isLight ? 'light' : 'dark')) showMode();   // arrived after the page was shown
+    };
+    im.onload = () => (im.decode ? im.decode().then(done, e => { dbg(`${m}: decode() said ${e}`); done(); }) : done());
+    im.onerror = () => { console.warn('Could not load ' + src); dbg(`${m}: FAILED to load ${src}`); res(null); };
+    im.src = src;
   }));
 }
 let roomLoad = null;
@@ -565,24 +580,31 @@ function size() {
   W = cv.width = nw; H = cv.height = nh;
 }
 function paint() {
-  if (!curImg || !W) return;
-  const iw = curImg.naturalWidth, ih = curImg.naturalHeight, s = Math.max(W / iw, H / ih), w = iw * s, h = ih * s;
-  ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H);
-  ctx.drawImage(curImg, (W - w) * CONFIG.focus[0], (H - h) * CONFIG.focus[1], w, h);
+  if (!W) return;
+  let ok = false;
+  if (curImg) {
+    try {
+      const iw = curImg.naturalWidth, ih = curImg.naturalHeight, k = Math.max(W / iw, H / ih), w = iw * k, h = ih * k;
+      ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(curImg, (W - w) * CONFIG.focus[0], (H - h) * CONFIG.focus[1], w, h); ok = true;
+    } catch (e) { console.warn(e); dbg('paint failed: ' + e); }
+  }
+  if (!ok) { ctx.fillStyle = isLight ? '#d8d3cb' : '#0b0b0e'; ctx.fillRect(0, 0, W, H); }   // no picture: a plain panel, so the room, halo and reflection still line up
 }
 function layoutRoom() {   // the room photo and the wall/floor line follow the image box
   const sr = homeEl.getBoundingClientRect();
-  if (!curImg || !cv.width || !sr.width || !sr.height) return;
+  if (!cv.width || !sr.width || !sr.height) return;
   const ir = imgBox(), R = ROOM_PHOTO, k = R.inset, sx = Math.max(1, ir.width - 2 * k) / R.pw, sy = Math.max(1, ir.height - 2 * k) / R.ph;   // the photo's lightbox is stretched to sit just inside the artwork, so the artwork hides it exactly
   roomPhotoEl.style.backgroundSize = `${(R.w * sx).toFixed(2)}px ${(R.h * sy).toFixed(2)}px`;
   roomPhotoEl.style.backgroundPosition = `${(ir.left - sr.left + k - R.px * sx).toFixed(2)}px ${(ir.top - sr.top + k - R.py * sy).toFixed(2)}px`;
   homeEl.style.setProperty('--room-w', ir.width + 'px'); homeEl.style.setProperty('--room-ih', ir.height + 'px');
   homeEl.style.setProperty('--room-y', Math.round(ir.top - sr.top + ir.height * .5) + 'px');
   homeEl.style.setProperty('--room-h', Math.round(ir.bottom - sr.top - (R.inset + R.hz * (ir.height - 2 * R.inset) / R.ph)) + 'px');   // wall/floor line: the same height in dark mode as in the light-mode photo
+  roomPhotoEl.style.visibility = '';   // shown only once it is placed (before that its white lightbox would show at full size)
 }
 function layoutFX() {     // room, reflection, skirt: redone only when the box, the picture or the mode changed
   const sr = homeEl.getBoundingClientRect();
-  if (!curImg || !cv.width || !sr.width || !sr.height) return;
+  if (!cv.width || !sr.width || !sr.height) return;
   layoutRoom();
   updateReflection(sr, imgBox());
   const k = (info[isLight ? 'light' : 'dark'] || {}).k ?? .5;
@@ -596,7 +618,6 @@ function applyLook() {    // glow colour and halo strength of the active picture
 }
 function showMode() {     // puts the active mode's picture on screen
   curImg = pics[isLight ? 'light' : 'dark'] || null;
-  cv.style.visibility = curImg ? '' : 'hidden';   // picture missing: the stage stays plain
   if (curImg) aspect = curImg.naturalWidth / curImg.naturalHeight;
   applyLook(); layoutImage();
 }
@@ -920,13 +941,15 @@ async function boot() {
   requestAnimationFrame(pulseTick);
   try {
     document.documentElement.style.setProperty('--room-depth', CONFIG.darkRoomDepth);
+    roomPhotoEl.style.visibility = 'hidden';
     applyTheme();
-    await Promise.all([loadMode(isLight ? 'light' : 'dark'), isLight ? wait(loadRoomPhoto(), 8000) : null, wait(document.fonts ? document.fonts.ready : null, 3000)]);
+    await Promise.all([wait(loadMode(isLight ? 'light' : 'dark'), 25000), isLight ? wait(loadRoomPhoto(), 8000) : null, wait(document.fonts ? document.fonts.ready : null, 3000)]);
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
     showMode();
     menuMeasure(true); menuDraw(0);          // the image box is known now: row or column?
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // let the first full frame paint under the loading screen
-  } catch (e) { console.error(e); }
+  } catch (e) { console.error(e); dbg('boot failed: ' + e); }
+  dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
   reveal();
 }
 boot();
