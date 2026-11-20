@@ -8,7 +8,7 @@
 (function () { var p = 'auto'; try { p = new URLSearchParams(location.search).get('theme') || localStorage.getItem('theme') || 'auto'; } catch (e) {}
   document.documentElement.dataset.theme = (p === 'light' || (p === 'auto' && matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'dark'; })();
 </script>
-<noscript><style>#loader { display: none; }</style></noscript>
+<noscript><style>#loader { display: none; } .site-header, .site-footer { opacity: 1 !important; }</style></noscript>
 <title>Demma Guciàn</title>
 <style>
   /* Self-hosted font (lives in the repo, so Android always gets it): put Arimo.ttf in a folder called "fonts" next to index.html */
@@ -81,7 +81,7 @@
   html.has-roomphoto[data-theme="light"] .roomphoto { opacity: 1; }
   html.has-roomphoto[data-theme="light"] .room, html.has-roomphoto[data-theme="light"] .grain { display: none; }
   /* Dark room depth: the light-mode room photo, tinted by the artwork's own colour, very dim, and only where the artwork's light reaches (it fades out with distance). Strength = CONFIG.darkRoomDepth. */
-  html.has-roomphoto[data-theme="dark"] .roomphoto { opacity: calc(var(--room-depth, .09) * (.45 + .55 * var(--halo-k)));
+  html.has-roomphoto[data-theme="dark"] .roomphoto { opacity: calc(var(--room-depth, .06) * (.45 + .55 * var(--halo-k))); filter: blur(10px);   /* the blur turns the photo's sharp floor line into a long, soft turn */
     background-color: rgb(var(--ambilight-rgb)); background-blend-mode: multiply;
     -webkit-mask-image: radial-gradient(ellipse calc(var(--room-w, 600px) * 2.3) calc(var(--room-ih, 800px) * 1.2) at 50% var(--room-y, 45%), #000 0%, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, 0) 100%);
     mask-image: radial-gradient(ellipse calc(var(--room-w, 600px) * 2.3) calc(var(--room-ih, 800px) * 1.2) at 50% var(--room-y, 45%), #000 0%, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, 0) 100%); }
@@ -178,23 +178,23 @@
 
   /* ===== Light mode: plain white background, dark ink ===== */
   /* ===== The theme switch is a real light ===== */
-  /* Lights ON: the new (light) page strikes like a tube - a few stutters - then warms up to full. The dark page stays underneath. */
-  html.lights-on::view-transition-old(root), html.lights-on::view-transition-new(root),
-  html.lights-off::view-transition-old(root), html.lights-off::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-  html.lights-on::view-transition-new(root) { z-index: 2; animation: lightsOn 1.05s linear both; }
-  @keyframes lightsOn {
-    0%, 8% { opacity: 0; }
-    10% { opacity: .55; } 14%, 22% { opacity: .04; } 24% { opacity: .72; } 29% { opacity: .18; }
-    36% { opacity: .9; } 40% { opacity: .62; }
-    46% { opacity: .97; animation-timing-function: ease-out; }
-    100% { opacity: 1; }
-  }
-  /* Lights OFF: the old (light) page drops fast, flickers once, then its afterglow fades. The dark page waits underneath. */
-  html.lights-off::view-transition-old(root) { z-index: 2; animation: lightsOff .95s linear both; }
+  /* During the switch the ROOM (wall, artwork, reflection, skirt) is one layer that follows the lamp. The header and footer are separate layers that only change colour, so the text never flickers like the room. */
+  html.lights-on .stage, html.lights-off .stage { view-transition-name: room; }
+  html.lights-on .site-header, html.lights-off .site-header { view-transition-name: ui-top; }
+  html.lights-on .site-footer, html.lights-off .site-footer { view-transition-name: ui-bottom; }
+  html.lights-on::view-transition-old(root), html.lights-on::view-transition-new(root), html.lights-on::view-transition-old(room), html.lights-on::view-transition-new(room),
+  html.lights-off::view-transition-old(root), html.lights-off::view-transition-new(root), html.lights-off::view-transition-old(room), html.lights-off::view-transition-new(room) { animation: none; mix-blend-mode: normal; }
+  html.lights-on::view-transition-old(ui-top), html.lights-on::view-transition-new(ui-top), html.lights-on::view-transition-old(ui-bottom), html.lights-on::view-transition-new(ui-bottom),
+  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.2s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  /* Lights ON: one smooth warm-up. The lit room rises out of the dark, a little dim at first, slow to start, easing into full light. No stutter. */
+  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.4s cubic-bezier(.45, 0, .2, 1) both; }
+  @keyframes lightsOn { from { opacity: 0; filter: brightness(.55); } to { opacity: 1; filter: brightness(1); } }
+  /* Lights OFF: the lit room drops fast, flickers once, then its afterglow fades; the dark room waits underneath. */
+  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff .95s linear both; }
   @keyframes lightsOff {
-    0% { opacity: 1; } 5% { opacity: .34; } 9% { opacity: .62; }
-    14% { opacity: .2; animation-timing-function: ease-out; }
-    100% { opacity: 0; }
+    0% { opacity: 1; filter: brightness(1); } 5% { opacity: .34; } 9% { opacity: .62; }
+    14% { opacity: .2; filter: brightness(.75); animation-timing-function: ease-out; }
+    100% { opacity: 0; filter: brightness(.45); }
   }
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
     transition: background-color 1.2s ease, color 1.2s ease, box-shadow 1.2s ease, opacity 1.2s ease, text-shadow 1.2s ease !important; }   /* fallback when the browser has no view transitions */
@@ -220,6 +220,19 @@
     filter: drop-shadow(0 0 5.5px rgba(var(--ink-rgb), .33)) drop-shadow(0 0 12px rgba(var(--ink-rgb), .17));
     animation: breathe 3.733s cubic-bezier(.37, 0, .63, 1) infinite; }   /* the same breath as the menu +/-: opacity .56-1, size .98-1.03, 3.733 s */
   @keyframes breathe { 0%, 100% { opacity: 1; transform: scale(1.03); } 50% { opacity: .56; transform: scale(.98); } }
+  /* ===== Dark room: a darker wall, and a long soft turn from the wall into the floor ===== */
+  html[data-theme="dark"] .room::before {
+    background:
+      radial-gradient(ellipse calc(var(--room-w, 600px) * 2.6) calc(var(--room-ih, 800px) * 1.3) at 50% calc(var(--room-y, 45%) - var(--room-ih, 800px) * .08), rgba(var(--ambilight-rgb), calc(.07 * var(--halo-k))), rgba(var(--ambilight-rgb), calc(.045 * var(--halo-k))) 55%, rgba(var(--ambilight-rgb), 0) 100%),
+      radial-gradient(ellipse 90% 60% at 50% -12%, rgba(255, 240, 222, .03), rgba(255, 240, 222, 0) 75%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%);
+    mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%); }   /* the wall's light fades out over its lower half instead of ending in a hard step at the floor */
+  html[data-theme="dark"] .room::after { top: calc(var(--room-h, 70%) - 140px);   /* the floor's glow starts ABOVE the horizon and grows into it: wall and floor overlap in one long gradient */
+    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.03 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.045 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
+  /* The header, menu and icons stay invisible until the loading screen dissolves, then fade in just after the room */
+  .site-header, .site-footer { transition: opacity 1.4s ease .35s; }
+  html:not(.ready) .site-header, html:not(.ready) .site-footer { opacity: 0; }
+  .theme-btn.wait svg { animation: breathe 3.733s cubic-bezier(.37, 0, .63, 1) infinite; }   /* the other picture is still arriving */
   #loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
   #loader.done .ld { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { #loader span { animation: none; } }
@@ -278,7 +291,7 @@ const CONFIG = {
   images: { light: 'imagelightmode.jpg', dark: 'imagedarkmode.jpg' },   // next to index.html; the same proportions for both is best
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
-  darkRoomDepth: .09                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
+  darkRoomDepth: .06                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
 };
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -633,7 +646,9 @@ async function switchTheme(pref) {
   if (next === isLight) { applyTheme(); return; }
   themeBusy = true;
   const root = document.documentElement, apply = () => { applyTheme(); showMode(); };
-  await Promise.all([loadMode(next ? 'light' : 'dark'), next ? wait(loadRoomPhoto(), 4000) : null]);   // the other picture is normally ready already
+  if (!pics[next ? 'light' : 'dark']) themeBtn.classList.add('wait');   // the other picture is normally ready already; if not, the button breathes until it is
+  await Promise.all([loadMode(next ? 'light' : 'dark'), next ? wait(loadRoomPhoto(), 4000) : null]);
+  themeBtn.classList.remove('wait');
   if (reduceQ.matches) apply();
   else if (document.startViewTransition) {
     root.classList.add(next ? 'lights-on' : 'lights-off');
@@ -930,6 +945,7 @@ const loaderEl = document.getElementById('loader');
 let revealed = false;
 function reveal() {
   if (revealed) return; revealed = true;
+  document.documentElement.classList.add('ready');
   loaderEl.classList.add('done');
   setTimeout(() => loaderEl.remove(), 1600);
   let first = true;
@@ -943,7 +959,7 @@ async function boot() {
     document.documentElement.style.setProperty('--room-depth', CONFIG.darkRoomDepth);
     roomPhotoEl.style.visibility = 'hidden';
     applyTheme();
-    await Promise.all([wait(loadMode(isLight ? 'light' : 'dark'), 25000), isLight ? wait(loadRoomPhoto(), 8000) : null, wait(document.fonts ? document.fonts.ready : null, 3000)]);
+    await Promise.all([wait(loadMode(isLight ? 'light' : 'dark'), 90000), isLight ? wait(loadRoomPhoto(), 8000) : null, wait(document.fonts ? document.fonts.ready : null, 3000)]);
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
     showMode();
     menuMeasure(true); menuDraw(0);          // the image box is known now: row or column?
