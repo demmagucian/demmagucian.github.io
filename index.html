@@ -180,7 +180,7 @@
   html[data-theme="light"] #c { background: transparent; }
   html[data-theme="light"] .fgrp { mix-blend-mode: multiply; }
   html[data-theme="light"] .fgrp.refl-g { opacity: .9; }
-  html[data-theme="light"] .contact { background: rgba(34, 27, 21, .5); }
+  html[data-theme="light"] .contact { background: rgba(34, 27, 21, .62); }
 </style>
 </head>
 <body>
@@ -435,7 +435,8 @@ const roomEl = document.createElement('div'); roomEl.className = 'room'; roomEl.
 homeEl.insertBefore(roomEl, homeEl.firstChild);
 let lastRoom = '';
 /* The photo is padded around the original (420 px left/right, 300 px top/bottom) so it can be stretched to any window. panel = the white lightbox inside the padded file. */
-const ROOM_PHOTO = { src: 'background_light.jpg', w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3, hz: 110 };   // hz = how far the photo's wall/floor line sits above the foot of its lightbox (px in the photo)
+const ROOM_PHOTO = { src: 'background_light.jpg?v=3',   /* change the number whenever you upload a new photo: Safari keeps old copies of images */
+   w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3, hz: 110 };   // hz = how far the photo's wall/floor line sits above the foot of its lightbox (px in the photo)
 const roomPhotoEl = document.createElement('div'); roomPhotoEl.className = 'roomphoto'; roomPhotoEl.setAttribute('aria-hidden', 'true');
 homeEl.insertBefore(roomPhotoEl, homeEl.firstChild);
 { const im = new Image(); im.onload = () => { roomPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; document.documentElement.classList.add('has-roomphoto'); lastRoom = ''; lastGlowUpdate = 0; }; im.src = ROOM_PHOTO.src; }
