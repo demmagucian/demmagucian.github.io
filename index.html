@@ -73,8 +73,8 @@
   html[data-theme="light"] { --img-halo: 0 1px 5.5px .5px rgba(35, 29, 23, .09), 0 0 19px 3.5px rgba(35, 29, 23, .06), 0 3.5px 12px rgba(38, 31, 24, .065), 0 .5px 2.5px rgba(38, 31, 24, .05), 12px 4px 34px -4px rgba(35, 29, 23, .13), 34px 10px 80px -8px rgba(35, 29, 23, .09); }   /* the artwork stands off the wall: a soft shadow falls to the right (light comes from the upper left) and stops at the floor line */
   html[data-theme="light"] #c { clip-path: inset(-100px -100px 0 -100px); }
   /* Light mode room PHOTO: stretched so its white lightbox sits exactly behind the artwork (see ROOM_PHOTO in the script). If the file is missing, the CSS room above stays. */
-  .roomphoto { display: none; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: no-repeat; }
-  html.has-roomphoto[data-theme="light"] .roomphoto { display: block; }
+  .roomphoto { display: block; opacity: 0; will-change: opacity; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: no-repeat; }   /* kept ready (decoded) in dark mode too, so the switch to light never waits for the photo */
+  html.has-roomphoto[data-theme="light"] .roomphoto { opacity: 1; }
   html.has-roomphoto[data-theme="light"] .room, html.has-roomphoto[data-theme="light"] .grain { display: none; }
   html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
   .contact { position: absolute; z-index: 1; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;   /* hairline of shade where the artwork meets the floor */
@@ -440,7 +440,7 @@ const ROOM_PHOTO = { src: 'background_light.jpg?v=3',   /* change the number whe
    w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3, hz: 110 };   // hz = how far the photo's wall/floor line sits above the foot of its lightbox (px in the photo)
 const roomPhotoEl = document.createElement('div'); roomPhotoEl.className = 'roomphoto'; roomPhotoEl.setAttribute('aria-hidden', 'true');
 homeEl.insertBefore(roomPhotoEl, homeEl.firstChild);
-{ const im = new Image(); im.onload = () => { roomPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; document.documentElement.classList.add('has-roomphoto'); lastRoom = ''; lastGlowUpdate = 0; }; im.src = ROOM_PHOTO.src; }
+{ const im = new Image(); ROOM_PHOTO.img = im; const show = () => { roomPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; document.documentElement.classList.add('has-roomphoto'); lastRoom = ''; lastGlowUpdate = 0; }; im.onload = () => { if (im.decode) im.decode().then(show, show); else show(); }; im.src = ROOM_PHOTO.src; }
 const grainEl = document.createElement('div'); grainEl.className = 'grain'; grainEl.setAttribute('aria-hidden', 'true'); homeEl.appendChild(grainEl);
 /* The image box WITHOUT the press-zoom transform (getBoundingClientRect includes it, which made the reflection jump, re-key and sit under the image) */
 function imgBox() {
@@ -862,6 +862,8 @@ function drawLens(p) {
 }
 
 function size() {
+  { const cw0 = cv.clientWidth, ch0 = cv.clientHeight, d0 = Math.min(window.devicePixelRatio || 1, Math.sqrt(12e6 / (cw0 * ch0)));
+    if (W && Math.round(cw0 * d0) === W && Math.round(ch0 * d0) === H && cv.width === W && cv.height === H) return; }   // same size (e.g. only the theme changed): keep the canvases, no blank frame, no big reallocation
   let snapC = null;                                  // keep the locked areas when the window changes size
   if (heldHas) { snapC = document.createElement('canvas'); snapC.width = held.width; snapC.height = held.height; snapC.getContext('2d').drawImage(held, 0, 0); }
   const cw = cv.clientWidth, ch = cv.clientHeight;
