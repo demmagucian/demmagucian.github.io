@@ -77,9 +77,8 @@
   html.has-roomphoto[data-theme="light"] .roomphoto { display: block; }
   html.has-roomphoto[data-theme="light"] .room, html.has-roomphoto[data-theme="light"] .grain { display: none; }
   html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-  .contact { display: none !important; position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;   /* hairline of shade where the artwork meets the floor */
-    background: linear-gradient(to bottom, rgba(0, 0, 0, .5), rgba(0, 0, 0, 0));
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent); }
+  .contact { position: absolute; z-index: 1; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;   /* hairline of shade where the artwork meets the floor */
+    background: rgba(0, 0, 0, .6); }   /* fills exactly the thin gap between the image and its reflection, so the gap reads as floor in shade, not as a bright line */
   #c { position: relative; z-index: 1; background: #000; transform-origin: 50% 100%;   /* the press-zoom grows upward from the bottom edge: the image can never sink onto the reflection */     /* image always on top of the halo and fully opaque */
     box-shadow: var(--img-halo);
     clip-path: inset(-40px -40px 0 -40px); }   /* halo on top and sides only; nothing spills below the bottom edge, so the gap to the reflection stays clean */
@@ -181,7 +180,7 @@
   html[data-theme="light"] #c { background: transparent; }
   html[data-theme="light"] .fgrp { mix-blend-mode: multiply; }
   html[data-theme="light"] .fgrp.refl-g { opacity: .9; }
-  html[data-theme="light"] .contact { background: linear-gradient(to bottom, rgba(38, 31, 24, .28), rgba(38, 31, 24, 0)); }
+  html[data-theme="light"] .contact { background: rgba(34, 27, 21, .5); }
 </style>
 </head>
 <body>
@@ -379,6 +378,7 @@ const reflTmp = document.createElement('canvas'), reflTmpCtx = reflTmp.getContex
 /* ===== Reflection: sharp and bright under the image, getting blurrier and darker further down ===== */
 const REFL_W = 320, REFL_HEIGHT = .6;   // REFL_W: higher resolution so the part near the image can be truly sharp. REFL_HEIGHT: length of the reflection as a fraction of the image height
 const REFL_HEIGHT_P = .22;             // portrait (vertical) screens: much shorter reflection, so it fades out on its own instead of running down the page. Landscape is cut short by the screen edge, so it keeps REFL_HEIGHT
+const REFL_SPACING = 0.25;             // CSS px of floor visible between the foot of the image and the start of the reflection (0 = touching). Drawn in whole DEVICE pixels, so the smallest visible gap is 1 device px (0.5 px on a 2x iPad, 0.33 px on 3x)
 const REFL_GAP = 0;                    // clean gap (px) between the foot of the image and the start of the reflection, same in dark and light
 const REFL_PAD = .06;                  // the layer reaches this far past each side of the image (fraction of the image width)
 const mk = () => document.createElement('canvas');
@@ -435,7 +435,7 @@ const roomEl = document.createElement('div'); roomEl.className = 'room'; roomEl.
 homeEl.insertBefore(roomEl, homeEl.firstChild);
 let lastRoom = '';
 /* The photo is padded around the original (420 px left/right, 300 px top/bottom) so it can be stretched to any window. panel = the white lightbox inside the padded file. */
-const ROOM_PHOTO = { src: 'background_light.jpg', w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3 };
+const ROOM_PHOTO = { src: 'background_light.jpg', w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3, hz: 110 };   // hz = how far the photo's wall/floor line sits above the foot of its lightbox (px in the photo)
 const roomPhotoEl = document.createElement('div'); roomPhotoEl.className = 'roomphoto'; roomPhotoEl.setAttribute('aria-hidden', 'true');
 homeEl.insertBefore(roomPhotoEl, homeEl.firstChild);
 { const im = new Image(); im.onload = () => { roomPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; document.documentElement.classList.add('has-roomphoto'); lastRoom = ''; lastGlowUpdate = 0; }; im.src = ROOM_PHOTO.src; }
@@ -560,12 +560,12 @@ function updateReflection(sr, ir) {
   const h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));   // vertical stage: brief reflection (and, through h, a brief skirt); whole pixels, like the image
   if (!homeVisible || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; reflOld.style.display = 'none'; skirtOld.style.display = 'none'; contactEl.style.display = 'none'; fxR.key = fxS.key = ''; return; }   // hidden in the sections
   const padPx = Math.round(ir.width * REFL_PAD), W = ir.width + 2 * padPx;                       // whole-pixel box, symmetric around the image: no half-pixel edges that can shift against it
-  const hide = 1;   // negative = the reflection starts this many px BELOW the foot of the image   // was Math.ceil(W / REFL_W): the reflection was pushed up UNDER the image, so the image covered its first rows and the mirror was shifted; it now starts exactly at the foot of the image   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
+  const dpr = window.devicePixelRatio || 1, hide = -(REFL_SPACING > 0 ? Math.max(1, Math.round(REFL_SPACING * dpr)) / dpr : 0);   // negative = the reflection starts this many px BELOW the foot of the image   // was Math.ceil(W / REFL_W): the reflection was pushed up UNDER the image, so the image covered its first rows and the mirror was shifted; it now starts exactly at the foot of the image   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
   const rl = Math.round(ir.left - sr.left) - padPx, rt = Math.round(ir.bottom - sr.top) - hide;
   fadeBegin(reflCanvas, reflOld, fxR, `${rl}|${rt}|${W}|${h}|${isLight}`);
   const ch = Math.min(7, Math.max(3, Math.round(ir.height * .007)));      // contact shade: a few px, sized to the image
-  contactEl.style.display = 'block'; contactEl.style.left = (Math.round(ir.left - sr.left) - 6) + 'px'; contactEl.style.top = Math.round(ir.bottom - sr.top) + 'px';
-  contactEl.style.width = (ir.width + 12) + 'px'; contactEl.style.height = ch + 'px';
+  contactEl.style.display = 'block'; contactEl.style.left = Math.round(ir.left - sr.left) + 'px'; contactEl.style.top = Math.round(ir.bottom - sr.top) + 'px';
+  contactEl.style.width = ir.width + 'px'; contactEl.style.height = (-hide) + 'px'; contactEl.style.display = hide < 0 ? 'block' : 'none';
   reflCanvas.style.display = 'block';
   reflCanvas.style.left = rl + 'px';
   reflCanvas.style.top = rt + 'px';
@@ -678,7 +678,7 @@ function updateAmbilight(now) {
       roomPhotoEl.style.backgroundPosition = `${(ir.left - sr.left + k - R.px * sx).toFixed(2)}px ${(ir.top - sr.top + k - R.py * sy).toFixed(2)}px`; }
     homeEl.style.setProperty('--room-w', ir.width + 'px'); homeEl.style.setProperty('--room-ih', ir.height + 'px');
     homeEl.style.setProperty('--room-y', Math.round(ir.top - sr.top + ir.height * .5) + 'px');
-    homeEl.style.setProperty('--room-h', Math.round(ir.bottom - sr.top - ir.height * .12) + 'px');
+    homeEl.style.setProperty('--room-h', Math.round(ir.bottom - sr.top - (ROOM_PHOTO.inset + ROOM_PHOTO.hz * (ir.height - 2 * ROOM_PHOTO.inset) / ROOM_PHOTO.ph)) + 'px');   // wall/floor line: the same height in dark mode as in the light-mode photo
   }
   if (doRefl) { lastReflDraw = now; updateReflection(sr, irr); }
   skirtGroup.style.opacity = (SKIRT_OPACITY * (isLight ? 1 : .2 + .8 * haloK)).toFixed(3);   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
