@@ -89,7 +89,7 @@
   /* Dark floor: brighter than the wall, and the room photo is kept SHARP here (little blur, a touch more contrast) so the cable lying on the floor can be felt.
      Only below the wall/floor line (--room-h): the wall keeps its dark look. */
   .floorphoto { display: block; opacity: 0; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: no-repeat; }
-  html.has-roomphoto[data-theme="dark"] .floorphoto { opacity: calc(var(--floor-light, .34) * (.5 + .5 * var(--halo-k))); filter: blur(var(--floor-blur, 1.5px)) contrast(1.3);
+  html.has-roomphoto[data-theme="dark"] .floorphoto { opacity: calc(var(--floor-light, .14) * (.5 + .5 * var(--halo-k))); filter: blur(var(--floor-blur, 0px)) contrast(1.3);
     background-color: rgb(var(--ambilight-rgb)); background-blend-mode: multiply;
     -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 20px), #000 calc(var(--room-h, 70%) + 70px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * .85) at 50% var(--room-h, 70%), #000 0%, rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, 0) 100%);
     mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 20px), #000 calc(var(--room-h, 70%) + 70px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * .85) at 50% var(--room-h, 70%), #000 0%, rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, 0) 100%);
@@ -194,31 +194,27 @@
   html.lights-on::view-transition-old(root), html.lights-on::view-transition-new(root), html.lights-on::view-transition-old(room), html.lights-on::view-transition-new(room),
   html.lights-off::view-transition-old(root), html.lights-off::view-transition-new(root), html.lights-off::view-transition-old(room), html.lights-off::view-transition-new(room) { animation: none; mix-blend-mode: normal; }
   html.lights-on::view-transition-old(ui-top), html.lights-on::view-transition-new(ui-top), html.lights-on::view-transition-old(ui-bottom), html.lights-on::view-transition-new(ui-bottom),
-  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 2.6s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.7s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   /* The header and footer only change colour: their boxes never morph, so no icon (the X, for one) slides while the light changes. */
   html.lights-on::view-transition-group(ui-top), html.lights-on::view-transition-group(ui-bottom),
   html.lights-off::view-transition-group(ui-top), html.lights-off::view-transition-group(ui-bottom) { animation: none; }
-  /* Lights ON, like an old bulb: a slow, dim glow in the filament, then it climbs past full brightness (the picture looks too bright and a little soft), and settles. */
-  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 3.6s linear both; }
+  /* Lights ON: the room warms up and peaks a touch brighter than final, then settles. Subtle: a slight glow, almost no blur. */
+  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.9s cubic-bezier(.45, 0, .25, 1) both; }
   @keyframes lightsOn {
-    0%   { opacity: 0;   filter: brightness(.45) blur(0); animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
-    30%  { opacity: .3;  filter: brightness(.7) blur(1.2px); animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
-    62%  { opacity: .95; filter: brightness(1.5) blur(2.6px); animation-timing-function: cubic-bezier(.4, 0, .3, 1); }
-    82%  { opacity: 1;   filter: brightness(1.12) blur(1px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
-    100% { opacity: 1;   filter: brightness(1) blur(0); }
+    0%   { opacity: 0; filter: brightness(.85) blur(0); }
+    65%  { opacity: 1; filter: brightness(1.1) blur(.5px); }
+    100% { opacity: 1; filter: brightness(1) blur(0); }
   }
-  /* Lights OFF: the lit room sinks slowly, darker and softer as it goes (the afterglow fades); the dark room underneath comes into focus. */
-  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff 3.2s linear both; }
+  /* Lights OFF: the lit room dims and fades; the dark room settles underneath. */
+  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff 1.7s cubic-bezier(.4, 0, .3, 1) both; }
   @keyframes lightsOff {
-    0%   { opacity: 1;   filter: brightness(1) blur(0); animation-timing-function: cubic-bezier(.3, 0, .4, 1); }
-    18%  { opacity: 1;   filter: brightness(.7) blur(1.4px); animation-timing-function: cubic-bezier(.3, 0, .4, 1); }
-    50%  { opacity: .6;  filter: brightness(.5) blur(2.4px); animation-timing-function: cubic-bezier(.3, 0, .3, 1); }
-    100% { opacity: 0;   filter: brightness(.38) blur(1px); }
+    0%   { opacity: 1; filter: brightness(1) blur(0); }
+    100% { opacity: 0; filter: brightness(.7) blur(.5px); }
   }
-  html.lights-off::view-transition-new(room) { animation: darkSettle 3.2s cubic-bezier(.3, 0, .2, 1) both; }
-  @keyframes darkSettle { 0% { filter: brightness(.6) blur(2.6px); } 100% { filter: brightness(1) blur(0); } }
+  html.lights-off::view-transition-new(room) { animation: darkSettle 1.7s cubic-bezier(.4, 0, .3, 1) both; }
+  @keyframes darkSettle { 0% { filter: brightness(.85) blur(.5px); } 100% { filter: brightness(1) blur(0); } }
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
-    transition: background-color 2.6s ease, color 2.6s ease, box-shadow 2.6s ease, opacity 2.6s ease, text-shadow 2.6s ease !important; }   /* fallback when the browser has no view transitions */
+    transition: background-color 1.8s ease, color 1.8s ease, box-shadow 1.8s ease, opacity 1.8s ease, text-shadow 1.8s ease !important; }   /* fallback when the browser has no view transitions */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32;
     /* light mode reverses the halo into a soft negative shadow (50% of the old size and strength) */
     --img-halo: 0 1px 5.5px .5px rgba(35, 29, 23, .09), 0 0 19px 3.5px rgba(35, 29, 23, .06), 0 3.5px 12px rgba(38, 31, 24, .065), 0 .5px 2.5px rgba(38, 31, 24, .05);
@@ -250,7 +246,7 @@
     -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%);
     mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%); }   /* the wall's light fades out over its lower half instead of ending in a hard step at the floor */
   html[data-theme="dark"] .room::after { top: calc(var(--room-h, 70%) - 140px);   /* the floor's glow starts ABOVE the horizon and grows into it: wall and floor overlap in one long gradient */
-    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.07 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.1 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
+    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.045 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.065 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
   /* Footer links: they keep their look when hovered or pressed (no greying) */
   .social-links a, .social-links a:hover, .social-links a:active, .social-links a:focus { opacity: 1; }   /* the footer links never grey out, not on hover, not when pressed */
   .theme-btn.wait svg { animation: breathe 3.733s cubic-bezier(.37, 0, .63, 1) infinite; }   /* the other picture is still arriving */
@@ -312,8 +308,8 @@ const CONFIG = {
   images: { light: 'imagelightmode.jpg', dark: 'imagedarkmode.jpg' },   // next to index.html; the same proportions for both is best
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
-  darkFloorLight: .34,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
-  darkFloorBlur: 1.5,                                                   // px of blur on the floor photo: lower = the cable is sharper
+  darkFloorLight: .14,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
+  darkFloorBlur: 0,                                                   // px of blur on the floor photo: lower = the cable is sharper
   darkRoomDepth: .06                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
 };
 
@@ -679,7 +675,7 @@ async function switchTheme(pref) {
     root.classList.add(next ? 'lights-on' : 'lights-off');
     try { await document.startViewTransition(apply).finished; } catch (e) {}
     root.classList.remove('lights-on', 'lights-off');
-  } else { root.classList.add('theme-fade'); apply(); await new Promise(r => setTimeout(r, 2700)); root.classList.remove('theme-fade'); }
+  } else { root.classList.add('theme-fade'); apply(); await new Promise(r => setTimeout(r, 1900)); root.classList.remove('theme-fade'); }
   themeBusy = false; footLock = false; scheduleLayout();
 }
 themeBtn.addEventListener('click', () => {
@@ -816,6 +812,17 @@ document.getElementById('portraitsLink').addEventListener('click', e => { e.prev
 document.getElementById('writingLink').addEventListener('click', e => { e.preventDefault(); showSection('writing'); });
 document.getElementById('processLink').addEventListener('click', e => { e.preventDefault(); showSection('process'); });
 document.getElementById('meLink').addEventListener('click', e => { e.preventDefault(); showSection('me'); });
+/* X: open the app when there is one (the plain https link kept opening the browser on phones). Instagram's https link already opens its app. */
+document.querySelector('[data-link="x"]').addEventListener('click', e => {
+  const ua = navigator.userAgent, web = 'https://x.com/demma_gucian';
+  const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /Android/i.test(ua);
+  if (!ios && !android) return;   // desktop: the normal link opens the website in a new tab
+  e.preventDefault();
+  if (android) { location.href = 'intent://user?screen_name=demma_gucian#Intent;scheme=twitter;package=com.twitter.android;S.browser_fallback_url=' + encodeURIComponent(web) + ';end'; return; }
+  let left = false; const gone = () => { left = true; }; window.addEventListener('pagehide', gone, { once: true }); document.addEventListener('visibilitychange', gone, { once: true });
+  location.href = 'twitter://user?screen_name=demma_gucian';
+  setTimeout(() => { if (!left && !document.hidden) window.open(web, '_blank', 'noopener'); }, 1200);   // no app: the website
+});
 /* The globe reveals the contact links as a short-lived, cinematic fan. */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') showSection(null); });
 
