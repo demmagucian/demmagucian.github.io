@@ -86,13 +86,15 @@
     -webkit-mask-image: radial-gradient(ellipse calc(var(--room-w, 600px) * 2.3) calc(var(--room-ih, 800px) * 1.2) at 50% var(--room-y, 45%), #000 0%, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, 0) 100%);
     mask-image: radial-gradient(ellipse calc(var(--room-w, 600px) * 2.3) calc(var(--room-ih, 800px) * 1.2) at 50% var(--room-y, 45%), #000 0%, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, 0) 100%); }
   html.rp-in .roomphoto { transition: opacity 1.6s ease; }
-  /* Dark floor: brighter than the wall, and the room photo is kept SHARP here (little blur, a touch more contrast) so the cable lying on the floor can be felt.
-     Only below the wall/floor line (--room-h): the wall keeps its dark look. */
+  /* Dark floor: the room photo's own floor texture, lit like a pool of light ON the floor (not a veil in the air):
+     - a wide, shallow ellipse (perspective) centred on the foot of the artwork, strongest beside it and dying out with distance,
+     - only below the wall/floor line (--room-h), so the wall keeps its dark look,
+     - contrast stretched so only the texture (and the cable) catches the light; flat areas stay dark instead of turning into haze. */
   .floorphoto { display: block; opacity: 0; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: no-repeat; }
-  html.has-roomphoto[data-theme="dark"] .floorphoto { opacity: calc(var(--floor-light, .14) * (.5 + .5 * var(--halo-k))); filter: blur(var(--floor-blur, 0px)) contrast(1.3);
+  html.has-roomphoto[data-theme="dark"] .floorphoto { opacity: calc(var(--floor-light, .6) * (.5 + .5 * var(--halo-k))); filter: blur(var(--floor-blur, 0px)) contrast(var(--floor-contrast, 1.6)) brightness(1.1);
     background-color: rgb(var(--ambilight-rgb)); background-blend-mode: multiply;
-    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 20px), #000 calc(var(--room-h, 70%) + 70px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * .85) at 50% var(--room-h, 70%), #000 0%, rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, 0) 100%);
-    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 20px), #000 calc(var(--room-h, 70%) + 70px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * .85) at 50% var(--room-h, 70%), #000 0%, rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, 0) 100%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 8px), #000 calc(var(--room-h, 70%) + 36px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 1.45) calc(var(--room-ih, 800px) * .5) at 50% calc(var(--room-y, 45%) + var(--room-ih, 800px) * .5), #000 0%, rgba(0, 0, 0, .7) 15%, rgba(0, 0, 0, .42) 30%, rgba(0, 0, 0, .2) 50%, rgba(0, 0, 0, .06) 75%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 8px), #000 calc(var(--room-h, 70%) + 36px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 1.45) calc(var(--room-ih, 800px) * .5) at 50% calc(var(--room-y, 45%) + var(--room-ih, 800px) * .5), #000 0%, rgba(0, 0, 0, .7) 15%, rgba(0, 0, 0, .42) 30%, rgba(0, 0, 0, .2) 50%, rgba(0, 0, 0, .06) 75%, rgba(0, 0, 0, 0) 100%);
     -webkit-mask-composite: source-in; mask-composite: intersect; }
   html.rp-in .floorphoto { transition: opacity 1.6s ease; }   /* only for the photo arriving late in dark mode; never during the theme switch */
   html[data-theme="light"] .floorphoto { display: none; }
@@ -194,12 +196,12 @@
   html.lights-on::view-transition-old(root), html.lights-on::view-transition-new(root), html.lights-on::view-transition-old(room), html.lights-on::view-transition-new(room),
   html.lights-off::view-transition-old(root), html.lights-off::view-transition-new(root), html.lights-off::view-transition-old(room), html.lights-off::view-transition-new(room) { animation: none; mix-blend-mode: normal; }
   html.lights-on::view-transition-old(ui-top), html.lights-on::view-transition-new(ui-top), html.lights-on::view-transition-old(ui-bottom), html.lights-on::view-transition-new(ui-bottom),
-  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.4s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.7s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   /* The header and footer only change colour: their boxes never morph, so no icon (the X, for one) slides while the light changes. */
   html.lights-on::view-transition-group(ui-top), html.lights-on::view-transition-group(ui-bottom),
   html.lights-off::view-transition-group(ui-top), html.lights-off::view-transition-group(ui-bottom) { animation: none; }
   /* Lights ON: the room warms up and peaks a touch brighter than final, then settles. Subtle: a slight glow, almost no blur. */
-  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.3s cubic-bezier(.4, 0, .2, 1) both; }
+  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.8s cubic-bezier(.4, 0, .2, 1) both; }
   @keyframes lightsOn {
     0%   { opacity: 0; filter: brightness(.85) blur(0); }
     60%  { opacity: 1; filter: brightness(1.1) blur(.15px); }
@@ -246,7 +248,7 @@
     -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%);
     mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%); }   /* the wall's light fades out over its lower half instead of ending in a hard step at the floor */
   html[data-theme="dark"] .room::after { top: calc(var(--room-h, 70%) - 140px);   /* the floor's glow starts ABOVE the horizon and grows into it: wall and floor overlap in one long gradient */
-    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.045 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.065 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
+    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.03 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.045 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
   /* Footer links: they keep their look when hovered or pressed (no greying) */
   .social-links a, .social-links a:hover, .social-links a:active, .social-links a:focus { opacity: 1; }   /* the footer links never grey out, not on hover, not when pressed */
   .theme-btn.wait svg { animation: breathe 3.733s cubic-bezier(.37, 0, .63, 1) infinite; }   /* the other picture is still arriving */
@@ -311,7 +313,8 @@ const CONFIG = {
   images: { light: 'imagelightmode.jpg', dark: 'imagedarkmode.jpg' },   // next to index.html; the same proportions for both is best
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
-  darkFloorLight: .14,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
+  darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
+  darkFloorContrast: 1.6,                                               // dark floor: higher = only the texture and the cable catch the light, flat areas stay dark (less haze)
   darkFloorBlur: 0,                                                   // px of blur on the floor photo: lower = the cable is sharper
   darkRoomDepth: .06                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
 };
@@ -815,18 +818,23 @@ document.getElementById('portraitsLink').addEventListener('click', e => { e.prev
 document.getElementById('writingLink').addEventListener('click', e => { e.preventDefault(); showSection('writing'); });
 document.getElementById('processLink').addEventListener('click', e => { e.preventDefault(); showSection('process'); });
 document.getElementById('meLink').addEventListener('click', e => { e.preventDefault(); showSection('me'); });
-/* X: open the app when there is one (the plain https link kept opening the browser on phones). Instagram's https link already opens its app. */
-document.querySelector('[data-link="x"]').addEventListener('click', e => {
-  const ua = navigator.userAgent, web = 'https://x.com/demma_gucian';
-  const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /Android/i.test(ua);
-  if (!ios && !android) return;   // desktop: the normal link opens the website in a new tab
-  e.preventDefault();
-  if (android) { location.href = 'intent://user?screen_name=demma_gucian#Intent;scheme=twitter;package=com.twitter.android;S.browser_fallback_url=' + encodeURIComponent(web) + ';end'; return; }
-  const t0 = Date.now(); let left = false; const gone = () => { left = true; };
-  ['pagehide', 'blur'].forEach(t => window.addEventListener(t, gone, { once: true })); document.addEventListener('visibilitychange', gone, { once: true });
-  location.href = 'twitter://user?screen_name=demma_gucian';
-  setTimeout(() => { if (!left && !document.hidden && Date.now() - t0 < 1800) location.href = web; }, 1200);   // no app: the website. Never after coming back from the app (timer late, or the page was hidden)
-});
+/* X and Instagram: on phones and tablets they ask to open the app (the phone's own "Open in ...?" question); with no app they fall back to the website.
+   On desktop the normal link opens the website in a new tab. */
+function appLink(sel, web, iosUrl, androidIntent) {
+  document.querySelector(sel).addEventListener('click', e => {
+    const ua = navigator.userAgent;
+    const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /Android/i.test(ua);
+    if (!ios && !android) return;
+    e.preventDefault();
+    if (android) { location.href = androidIntent + ';S.browser_fallback_url=' + encodeURIComponent(web) + ';end'; return; }
+    const t0 = Date.now(); let left = false; const gone = () => { left = true; };
+    ['pagehide', 'blur'].forEach(t => window.addEventListener(t, gone, { once: true })); document.addEventListener('visibilitychange', gone, { once: true });
+    location.href = iosUrl;
+    setTimeout(() => { if (!left && !document.hidden && Date.now() - t0 < 1800) location.href = web; }, 1200);   // no app: the website. Never after coming back from the app
+  });
+}
+appLink('[data-link="x"]', 'https://x.com/demma_gucian', 'twitter://user?screen_name=demma_gucian', 'intent://user?screen_name=demma_gucian#Intent;scheme=twitter;package=com.twitter.android');
+appLink('[data-link="instagram"]', 'https://www.instagram.com/demma_gucian/', 'instagram://user?username=demma_gucian', 'intent://instagram.com/_u/demma_gucian/#Intent;package=com.instagram.android;scheme=https');
 /* The globe reveals the contact links as a short-lived, cinematic fan. */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') showSection(null); });
 
@@ -987,7 +995,7 @@ async function boot() {
   requestAnimationFrame(pulseTick);
   try {
     document.documentElement.style.setProperty('--room-depth', CONFIG.darkRoomDepth);
-    document.documentElement.style.setProperty('--floor-light', CONFIG.darkFloorLight); document.documentElement.style.setProperty('--floor-blur', CONFIG.darkFloorBlur + 'px');
+    document.documentElement.style.setProperty('--floor-light', CONFIG.darkFloorLight); document.documentElement.style.setProperty('--floor-blur', CONFIG.darkFloorBlur + 'px'); document.documentElement.style.setProperty('--floor-contrast', CONFIG.darkFloorContrast);
     roomPhotoEl.style.visibility = 'hidden'; floorPhotoEl.style.visibility = 'hidden';
     applyTheme();
     await Promise.all([wait(loadMode('light'), 90000), wait(loadMode('dark'), 90000), wait(loadRoomPhoto(), 8000), wait(document.fonts ? document.fonts.ready : null, 3000)]);   // both pictures and the room photo, so the light button always works
