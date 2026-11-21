@@ -8,7 +8,7 @@
 (function () { var p = 'auto'; try { p = new URLSearchParams(location.search).get('theme') || localStorage.getItem('theme') || 'auto'; } catch (e) {}
   document.documentElement.dataset.theme = (p === 'light' || (p === 'auto' && matchMedia('(prefers-color-scheme: light)').matches)) ? 'light' : 'dark'; })();
 </script>
-<noscript><style>#loader { display: none; } .site-header, .site-footer { opacity: 1 !important; }</style></noscript>
+<noscript><style>#loader { display: none; }</style></noscript>
 <title>Demma Guciàn</title>
 <style>
   /* Self-hosted font (lives in the repo, so Android always gets it): put Arimo.ttf in a folder called "fonts" next to index.html */
@@ -85,7 +85,17 @@
     background-color: rgb(var(--ambilight-rgb)); background-blend-mode: multiply;
     -webkit-mask-image: radial-gradient(ellipse calc(var(--room-w, 600px) * 2.3) calc(var(--room-ih, 800px) * 1.2) at 50% var(--room-y, 45%), #000 0%, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, 0) 100%);
     mask-image: radial-gradient(ellipse calc(var(--room-w, 600px) * 2.3) calc(var(--room-ih, 800px) * 1.2) at 50% var(--room-y, 45%), #000 0%, rgba(0, 0, 0, .55) 45%, rgba(0, 0, 0, 0) 100%); }
-  html.rp-in .roomphoto { transition: opacity 1.6s ease; }   /* only for the photo arriving late in dark mode; never during the theme switch */
+  html.rp-in .roomphoto { transition: opacity 1.6s ease; }
+  /* Dark floor: brighter than the wall, and the room photo is kept SHARP here (little blur, a touch more contrast) so the cable lying on the floor can be felt.
+     Only below the wall/floor line (--room-h): the wall keeps its dark look. */
+  .floorphoto { display: block; opacity: 0; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-repeat: no-repeat; }
+  html.has-roomphoto[data-theme="dark"] .floorphoto { opacity: calc(var(--floor-light, .34) * (.5 + .5 * var(--halo-k))); filter: blur(var(--floor-blur, 1.5px)) contrast(1.3);
+    background-color: rgb(var(--ambilight-rgb)); background-blend-mode: multiply;
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 20px), #000 calc(var(--room-h, 70%) + 70px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * .85) at 50% var(--room-h, 70%), #000 0%, rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, 0) 100%);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) calc(var(--room-h, 70%) - 20px), #000 calc(var(--room-h, 70%) + 70px)), radial-gradient(ellipse calc(var(--room-w, 600px) * 2.4) calc(var(--room-ih, 800px) * .85) at 50% var(--room-h, 70%), #000 0%, rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, 0) 100%);
+    -webkit-mask-composite: source-in; mask-composite: intersect; }
+  html.rp-in .floorphoto { transition: opacity 1.6s ease; }   /* only for the photo arriving late in dark mode; never during the theme switch */
+  html[data-theme="light"] .floorphoto { display: none; }
   html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
   .contact { position: absolute; z-index: 2; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;
     background: linear-gradient(to bottom, rgba(0, 0, 0, .24) 0%, rgba(0, 0, 0, .13) 18%, rgba(0, 0, 0, .045) 48%, rgba(0, 0, 0, 0) 100%); }   /* soft contact shadow: strongest at the artwork's foot, fading into the reflection */
@@ -138,7 +148,6 @@
   .social-links { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
   .social-links a, .theme-btn { display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center;
     color: var(--ink); text-decoration: none; filter: var(--ico-glow); }
-  .social-links a:hover { opacity: .55; }
   .theme-btn { padding: 0; border: 0; background: none; font: inherit; cursor: pointer; }
   .theme-row { justify-content: center; height: 14px; }
   .theme-btn svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: var(--ico-stroke); stroke-linecap: round; stroke-linejoin: round; opacity: var(--ico-op); }
@@ -185,19 +194,31 @@
   html.lights-on::view-transition-old(root), html.lights-on::view-transition-new(root), html.lights-on::view-transition-old(room), html.lights-on::view-transition-new(room),
   html.lights-off::view-transition-old(root), html.lights-off::view-transition-new(root), html.lights-off::view-transition-old(room), html.lights-off::view-transition-new(room) { animation: none; mix-blend-mode: normal; }
   html.lights-on::view-transition-old(ui-top), html.lights-on::view-transition-new(ui-top), html.lights-on::view-transition-old(ui-bottom), html.lights-on::view-transition-new(ui-bottom),
-  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.2s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
-  /* Lights ON: one smooth warm-up. The lit room rises out of the dark, a little dim at first, slow to start, easing into full light. No stutter. */
-  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.4s cubic-bezier(.45, 0, .2, 1) both; }
-  @keyframes lightsOn { from { opacity: 0; filter: brightness(.55); } to { opacity: 1; filter: brightness(1); } }
-  /* Lights OFF: the lit room drops fast, flickers once, then its afterglow fades; the dark room waits underneath. */
-  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff .95s linear both; }
-  @keyframes lightsOff {
-    0% { opacity: 1; filter: brightness(1); } 5% { opacity: .34; } 9% { opacity: .62; }
-    14% { opacity: .2; filter: brightness(.75); animation-timing-function: ease-out; }
-    100% { opacity: 0; filter: brightness(.45); }
+  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 2.6s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  /* The header and footer only change colour: their boxes never morph, so no icon (the X, for one) slides while the light changes. */
+  html.lights-on::view-transition-group(ui-top), html.lights-on::view-transition-group(ui-bottom),
+  html.lights-off::view-transition-group(ui-top), html.lights-off::view-transition-group(ui-bottom) { animation: none; }
+  /* Lights ON, like an old bulb: a slow, dim glow in the filament, then it climbs past full brightness (the picture looks too bright and a little soft), and settles. */
+  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 3.6s linear both; }
+  @keyframes lightsOn {
+    0%   { opacity: 0;   filter: brightness(.45) blur(0); animation-timing-function: cubic-bezier(.5, 0, .9, .6); }
+    30%  { opacity: .3;  filter: brightness(.7) blur(1.2px); animation-timing-function: cubic-bezier(.3, 0, .5, 1); }
+    62%  { opacity: .95; filter: brightness(1.5) blur(2.6px); animation-timing-function: cubic-bezier(.4, 0, .3, 1); }
+    82%  { opacity: 1;   filter: brightness(1.12) blur(1px); animation-timing-function: cubic-bezier(.3, 0, .2, 1); }
+    100% { opacity: 1;   filter: brightness(1) blur(0); }
   }
+  /* Lights OFF: the lit room sinks slowly, darker and softer as it goes (the afterglow fades); the dark room underneath comes into focus. */
+  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff 3.2s linear both; }
+  @keyframes lightsOff {
+    0%   { opacity: 1;   filter: brightness(1) blur(0); animation-timing-function: cubic-bezier(.3, 0, .4, 1); }
+    18%  { opacity: 1;   filter: brightness(.7) blur(1.4px); animation-timing-function: cubic-bezier(.3, 0, .4, 1); }
+    50%  { opacity: .6;  filter: brightness(.5) blur(2.4px); animation-timing-function: cubic-bezier(.3, 0, .3, 1); }
+    100% { opacity: 0;   filter: brightness(.38) blur(1px); }
+  }
+  html.lights-off::view-transition-new(room) { animation: darkSettle 3.2s cubic-bezier(.3, 0, .2, 1) both; }
+  @keyframes darkSettle { 0% { filter: brightness(.6) blur(2.6px); } 100% { filter: brightness(1) blur(0); } }
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
-    transition: background-color 1.2s ease, color 1.2s ease, box-shadow 1.2s ease, opacity 1.2s ease, text-shadow 1.2s ease !important; }   /* fallback when the browser has no view transitions */
+    transition: background-color 2.6s ease, color 2.6s ease, box-shadow 2.6s ease, opacity 2.6s ease, text-shadow 2.6s ease !important; }   /* fallback when the browser has no view transitions */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32;
     /* light mode reverses the halo into a soft negative shadow (50% of the old size and strength) */
     --img-halo: 0 1px 5.5px .5px rgba(35, 29, 23, .09), 0 0 19px 3.5px rgba(35, 29, 23, .06), 0 3.5px 12px rgba(38, 31, 24, .065), 0 .5px 2.5px rgba(38, 31, 24, .05);
@@ -212,7 +233,8 @@
   html[data-theme="light"] .contact { background: linear-gradient(to bottom, rgba(34, 27, 21, .22) 0%, rgba(34, 27, 21, .12) 18%, rgba(34, 27, 21, .04) 48%, rgba(34, 27, 21, 0) 100%); }
 
   /* ===== Loading screen: covers the page until fonts, the image and the room photo are ready, then dissolves into it ===== */
-  #loader { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: #000; color: var(--ink);
+  #loader { position: fixed; inset: 0; z-index: 5;   /* under the header and footer (z-index 10): the name, menu and icons are there while the picture loads */
+    display: flex; align-items: center; justify-content: center; background: #000; color: var(--ink);
     transition: opacity 1.3s cubic-bezier(.4, 0, .2, 1), visibility 0s linear 1.3s; }
   html[data-theme="light"] #loader { background: #e4dfd8; }
   #loader .ld { transition: opacity .8s ease; }
@@ -228,10 +250,9 @@
     -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%);
     mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - max(220px, 55%)), rgba(0, 0, 0, .08) 100%); }   /* the wall's light fades out over its lower half instead of ending in a hard step at the floor */
   html[data-theme="dark"] .room::after { top: calc(var(--room-h, 70%) - 140px);   /* the floor's glow starts ABOVE the horizon and grows into it: wall and floor overlap in one long gradient */
-    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.03 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.045 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
-  /* The header, menu and icons stay invisible until the loading screen dissolves, then fade in just after the room */
-  .site-header, .site-footer { transition: opacity 1.4s ease .35s; }
-  html:not(.ready) .site-header, html:not(.ready) .site-footer { opacity: 0; }
+    background: linear-gradient(to bottom, rgba(var(--ambilight-rgb), 0) 0, rgba(var(--ambilight-rgb), calc(.07 * var(--halo-k))) 140px, rgba(var(--ambilight-rgb), calc(.1 * var(--halo-k))) 200px, rgba(var(--ambilight-rgb), 0) 90%); }
+  /* Footer links: they keep their look when hovered or pressed (no greying) */
+  .social-links a, .social-links a:hover, .social-links a:active, .social-links a:focus { opacity: 1; }   /* the footer links never grey out, not on hover, not when pressed */
   .theme-btn.wait svg { animation: breathe 3.733s cubic-bezier(.37, 0, .63, 1) infinite; }   /* the other picture is still arriving */
   #loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
   #loader.done .ld { opacity: 0; }
@@ -271,13 +292,13 @@
   <div class="social-stack">
   <div class="social-links" aria-label="Social links">
     <div>
-    <a href="#" data-link="email" aria-label="Email" title="Email">
+    <a href="mailto:demmagucian@proton.me" data-link="email" aria-label="Email" title="Email">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="15" rx="1.5"/><path d="m3.5 6 8.5 7 8.5-7"/></svg>
     </a>
-    <a href="#" data-link="x" aria-label="X" title="X">
+    <a href="https://x.com/demma_gucian" target="_blank" rel="noopener noreferrer" data-link="x" aria-label="X" title="X">
       <svg viewBox="0 0 24 24" aria-hidden="true" class="x-mark"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932zm-1.29 19.49h2.039L6.486 3.24H4.298z"/></svg>
     </a>
-    <a href="#" data-link="instagram" aria-label="Instagram" title="Instagram">
+    <a href="https://www.instagram.com/demma_gucian/" target="_blank" rel="noopener noreferrer" data-link="instagram" aria-label="Instagram" title="Instagram">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.6" cy="6.6" r=".8" fill="currentColor" stroke="none"/></svg>
     </a>
     </div>
@@ -291,6 +312,8 @@ const CONFIG = {
   images: { light: 'imagelightmode.jpg', dark: 'imagedarkmode.jpg' },   // next to index.html; the same proportions for both is best
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
+  darkFloorLight: .34,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
+  darkFloorBlur: 1.5,                                                   // px of blur on the floor photo: lower = the cable is sharper
   darkRoomDepth: .06                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
 };
 
@@ -346,6 +369,8 @@ const ROOM_PHOTO = { src: 'background_light.jpg?v=3',   /* change the number whe
    w: 2288, h: 1686, px: 937, py: 482, pw: 414, ph: 710, inset: 3, hz: 110 };   // hz = how far the photo's wall/floor line sits above the foot of its lightbox (px in the photo)
 const roomPhotoEl = document.createElement('div'); roomPhotoEl.className = 'roomphoto'; roomPhotoEl.setAttribute('aria-hidden', 'true');
 homeEl.insertBefore(roomPhotoEl, homeEl.firstChild);
+const floorPhotoEl = document.createElement('div'); floorPhotoEl.className = 'floorphoto'; floorPhotoEl.setAttribute('aria-hidden', 'true');   // the same photo again, dark mode only, FLOOR only: it lets the cable on the floor show
+homeEl.insertBefore(floorPhotoEl, roomPhotoEl.nextSibling);
 const grainEl = document.createElement('div'); grainEl.className = 'grain'; grainEl.setAttribute('aria-hidden', 'true'); homeEl.appendChild(grainEl);
 /* The image box WITHOUT the press-zoom transform (getBoundingClientRect includes it, which made the reflection jump, re-key and sit under the image) */
 function imgBox() {
@@ -576,7 +601,7 @@ function loadRoomPhoto() {
     const im = new Image(), root = document.documentElement;
     const show = () => {
       if (revealed) { root.classList.add('rp-in'); setTimeout(() => root.classList.remove('rp-in'), 1800); }   // a late photo fades in softly in dark mode
-      roomPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; root.classList.add('has-roomphoto'); layoutRoom(); res();
+      roomPhotoEl.style.backgroundImage = floorPhotoEl.style.backgroundImage = `url("${ROOM_PHOTO.src}")`; root.classList.add('has-roomphoto'); layoutRoom(); res();
     };
     im.onload = () => (im.decode ? im.decode().then(show, show) : show());
     im.onerror = () => res();
@@ -608,12 +633,12 @@ function layoutRoom() {   // the room photo and the wall/floor line follow the i
   const sr = homeEl.getBoundingClientRect();
   if (!cv.width || !sr.width || !sr.height) return;
   const ir = imgBox(), R = ROOM_PHOTO, k = R.inset, sx = Math.max(1, ir.width - 2 * k) / R.pw, sy = Math.max(1, ir.height - 2 * k) / R.ph;   // the photo's lightbox is stretched to sit just inside the artwork, so the artwork hides it exactly
-  roomPhotoEl.style.backgroundSize = `${(R.w * sx).toFixed(2)}px ${(R.h * sy).toFixed(2)}px`;
-  roomPhotoEl.style.backgroundPosition = `${(ir.left - sr.left + k - R.px * sx).toFixed(2)}px ${(ir.top - sr.top + k - R.py * sy).toFixed(2)}px`;
+  roomPhotoEl.style.backgroundSize = floorPhotoEl.style.backgroundSize = `${(R.w * sx).toFixed(2)}px ${(R.h * sy).toFixed(2)}px`;
+  roomPhotoEl.style.backgroundPosition = floorPhotoEl.style.backgroundPosition = `${(ir.left - sr.left + k - R.px * sx).toFixed(2)}px ${(ir.top - sr.top + k - R.py * sy).toFixed(2)}px`;
   homeEl.style.setProperty('--room-w', ir.width + 'px'); homeEl.style.setProperty('--room-ih', ir.height + 'px');
   homeEl.style.setProperty('--room-y', Math.round(ir.top - sr.top + ir.height * .5) + 'px');
   homeEl.style.setProperty('--room-h', Math.round(ir.bottom - sr.top - (R.inset + R.hz * (ir.height - 2 * R.inset) / R.ph)) + 'px');   // wall/floor line: the same height in dark mode as in the light-mode photo
-  roomPhotoEl.style.visibility = '';   // shown only once it is placed (before that its white lightbox would show at full size)
+  roomPhotoEl.style.visibility = floorPhotoEl.style.visibility = '';   // shown only once it is placed (before that its white lightbox would show at full size)
 }
 function layoutFX() {     // room, reflection, skirt: redone only when the box, the picture or the mode changed
   const sr = homeEl.getBoundingClientRect();
@@ -644,7 +669,7 @@ async function switchTheme(pref) {
   if (themeBusy) return;
   const next = resolveLight(pref); themePref = pref;
   if (next === isLight) { applyTheme(); return; }
-  themeBusy = true;
+  themeBusy = true; footLock = true;
   const root = document.documentElement, apply = () => { applyTheme(); showMode(); };
   if (!pics[next ? 'light' : 'dark']) themeBtn.classList.add('wait');   // the other picture is normally ready already; if not, the button breathes until it is
   await Promise.all([loadMode(next ? 'light' : 'dark'), next ? wait(loadRoomPhoto(), 4000) : null]);
@@ -654,8 +679,8 @@ async function switchTheme(pref) {
     root.classList.add(next ? 'lights-on' : 'lights-off');
     try { await document.startViewTransition(apply).finished; } catch (e) {}
     root.classList.remove('lights-on', 'lights-off');
-  } else { root.classList.add('theme-fade'); apply(); await new Promise(r => setTimeout(r, 1300)); root.classList.remove('theme-fade'); }
-  themeBusy = false;
+  } else { root.classList.add('theme-fade'); apply(); await new Promise(r => setTimeout(r, 2700)); root.classList.remove('theme-fade'); }
+  themeBusy = false; footLock = false; scheduleLayout();
 }
 themeBtn.addEventListener('click', () => {
   const to = isLight ? 'dark' : 'light';
@@ -671,7 +696,7 @@ let lastEnd = 0;
 document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastEnd < 350 && !e.target.closest('nav, .menu-btn')) e.preventDefault(); lastEnd = n; }, { passive: false });
 document.addEventListener('dblclick', e => e.preventDefault());
 
-let footShift = 0;   // px the footer is moved down (see setBox)
+let footShift = 0, footLock = false;   // px the footer is moved down (see setBox)
 /* Widths of the name: the letters D and G, and the two words fully unfolded (single line, or stacked: the wider word) */
 function nameMetrics() {
   const nls = [...document.querySelectorAll('.site-name .nl')], nrs = [...document.querySelectorAll('.site-name .nr')];
@@ -742,7 +767,7 @@ function setBox() {
     if (mode === 'band') { regionTop = Tabs; groupBottom = pageBottom; imgBottomMax = freeBottom ? null : Babs; if (port) centerBand = [Tabs, Babs]; else topMin = 0; }
     else { regionTop = pageTop; groupBottom = pageBottom; topMin = topM; }
   }
-  if (footNew !== footShift) { footShift = footNew; document.querySelector('.site-footer').style.setProperty('--foot-shift', footNew + 'px'); }
+  if (footNew !== footShift && !footLock) { footShift = footNew; document.querySelector('.site-footer').style.setProperty('--foot-shift', footNew + 'px'); }
   const nameEl = document.querySelector('.site-name');
   if (nameEl.classList.contains('stacked') !== stacked) nameEl.classList.toggle('stacked', stacked);
   /* Whole-pixel box: width and height are integers and leave equal whole-pixel margins, so the image never sits on a half pixel.
@@ -767,7 +792,6 @@ const contentFrame = document.getElementById('contentFrame');
 const externalPage = document.getElementById('externalPage');
 const home = document.getElementById('home');
 const ARTWORKS_URL = 'https://verse.works/demma-gucian';
-const SITE_LINKS = { x: '', instagram: '', email: '' }; // Add the final profile URLs and email address here.
 let artworksLoaded = false;
 function showSection(section) {
   const active = !!section;
@@ -792,11 +816,6 @@ document.getElementById('portraitsLink').addEventListener('click', e => { e.prev
 document.getElementById('writingLink').addEventListener('click', e => { e.preventDefault(); showSection('writing'); });
 document.getElementById('processLink').addEventListener('click', e => { e.preventDefault(); showSection('process'); });
 document.getElementById('meLink').addEventListener('click', e => { e.preventDefault(); showSection('me'); });
-document.querySelectorAll('.social-links a[data-link]').forEach(a => {
-  const destination = SITE_LINKS[a.dataset.link];
-  if (destination) a.href = destination;
-  else { a.setAttribute('aria-disabled', 'true'); a.addEventListener('click', e => e.preventDefault()); }
-});
 /* The globe reveals the contact links as a short-lived, cinematic fan. */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') showSection(null); });
 
@@ -957,7 +976,8 @@ async function boot() {
   requestAnimationFrame(pulseTick);
   try {
     document.documentElement.style.setProperty('--room-depth', CONFIG.darkRoomDepth);
-    roomPhotoEl.style.visibility = 'hidden';
+    document.documentElement.style.setProperty('--floor-light', CONFIG.darkFloorLight); document.documentElement.style.setProperty('--floor-blur', CONFIG.darkFloorBlur + 'px');
+    roomPhotoEl.style.visibility = 'hidden'; floorPhotoEl.style.visibility = 'hidden';
     applyTheme();
     await Promise.all([wait(loadMode(isLight ? 'light' : 'dark'), 90000), isLight ? wait(loadRoomPhoto(), 8000) : null, wait(document.fonts ? document.fonts.ready : null, 3000)]);
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
