@@ -194,25 +194,25 @@
   html.lights-on::view-transition-old(root), html.lights-on::view-transition-new(root), html.lights-on::view-transition-old(room), html.lights-on::view-transition-new(room),
   html.lights-off::view-transition-old(root), html.lights-off::view-transition-new(root), html.lights-off::view-transition-old(room), html.lights-off::view-transition-new(room) { animation: none; mix-blend-mode: normal; }
   html.lights-on::view-transition-old(ui-top), html.lights-on::view-transition-new(ui-top), html.lights-on::view-transition-old(ui-bottom), html.lights-on::view-transition-new(ui-bottom),
-  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.7s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
+  html.lights-off::view-transition-old(ui-top), html.lights-off::view-transition-new(ui-top), html.lights-off::view-transition-old(ui-bottom), html.lights-off::view-transition-new(ui-bottom) { animation-duration: 1.4s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); }
   /* The header and footer only change colour: their boxes never morph, so no icon (the X, for one) slides while the light changes. */
   html.lights-on::view-transition-group(ui-top), html.lights-on::view-transition-group(ui-bottom),
   html.lights-off::view-transition-group(ui-top), html.lights-off::view-transition-group(ui-bottom) { animation: none; }
   /* Lights ON: the room warms up and peaks a touch brighter than final, then settles. Subtle: a slight glow, almost no blur. */
-  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.9s cubic-bezier(.45, 0, .25, 1) both; }
+  html.lights-on::view-transition-new(room) { z-index: 2; animation: lightsOn 1.3s cubic-bezier(.4, 0, .2, 1) both; }
   @keyframes lightsOn {
     0%   { opacity: 0; filter: brightness(.85) blur(0); }
-    65%  { opacity: 1; filter: brightness(1.1) blur(.5px); }
+    60%  { opacity: 1; filter: brightness(1.1) blur(.15px); }
     100% { opacity: 1; filter: brightness(1) blur(0); }
   }
   /* Lights OFF: the lit room dims and fades; the dark room settles underneath. */
-  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff 1.7s cubic-bezier(.4, 0, .3, 1) both; }
+  html.lights-off::view-transition-old(room) { z-index: 2; animation: lightsOff 1.9s cubic-bezier(.4, 0, .3, 1) both; }
   @keyframes lightsOff {
     0%   { opacity: 1; filter: brightness(1) blur(0); }
-    100% { opacity: 0; filter: brightness(.7) blur(.5px); }
+    100% { opacity: 0; filter: brightness(.5) blur(.7px); }
   }
-  html.lights-off::view-transition-new(room) { animation: darkSettle 1.7s cubic-bezier(.4, 0, .3, 1) both; }
-  @keyframes darkSettle { 0% { filter: brightness(.85) blur(.5px); } 100% { filter: brightness(1) blur(0); } }
+  html.lights-off::view-transition-new(room) { animation: darkSettle 1.9s cubic-bezier(.4, 0, .3, 1) both; }
+  @keyframes darkSettle { 0% { filter: brightness(.7) blur(.7px); } 100% { filter: brightness(1) blur(0); } }
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
     transition: background-color 1.8s ease, color 1.8s ease, box-shadow 1.8s ease, opacity 1.8s ease, text-shadow 1.8s ease !important; }   /* fallback when the browser has no view transitions */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32;
@@ -250,6 +250,9 @@
   /* Footer links: they keep their look when hovered or pressed (no greying) */
   .social-links a, .social-links a:hover, .social-links a:active, .social-links a:focus { opacity: 1; }   /* the footer links never grey out, not on hover, not when pressed */
   .theme-btn.wait svg { animation: breathe 3.733s cubic-bezier(.37, 0, .63, 1) infinite; }   /* the other picture is still arriving */
+  /* While loading, the name, menu and icons are neither visible nor usable; they come in with the page. */
+  html:not(.ready) .site-header, html:not(.ready) .site-footer { opacity: 0; visibility: hidden; pointer-events: none; }
+  .site-header, .site-footer { transition: opacity 1.3s cubic-bezier(.4, 0, .2, 1), visibility 0s; }
   #loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
   #loader.done .ld { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { #loader span { animation: none; } }
@@ -819,9 +822,10 @@ document.querySelector('[data-link="x"]').addEventListener('click', e => {
   if (!ios && !android) return;   // desktop: the normal link opens the website in a new tab
   e.preventDefault();
   if (android) { location.href = 'intent://user?screen_name=demma_gucian#Intent;scheme=twitter;package=com.twitter.android;S.browser_fallback_url=' + encodeURIComponent(web) + ';end'; return; }
-  let left = false; const gone = () => { left = true; }; window.addEventListener('pagehide', gone, { once: true }); document.addEventListener('visibilitychange', gone, { once: true });
+  const t0 = Date.now(); let left = false; const gone = () => { left = true; };
+  ['pagehide', 'blur'].forEach(t => window.addEventListener(t, gone, { once: true })); document.addEventListener('visibilitychange', gone, { once: true });
   location.href = 'twitter://user?screen_name=demma_gucian';
-  setTimeout(() => { if (!left && !document.hidden) window.open(web, '_blank', 'noopener'); }, 1200);   // no app: the website
+  setTimeout(() => { if (!left && !document.hidden && Date.now() - t0 < 1800) location.href = web; }, 1200);   // no app: the website. Never after coming back from the app (timer late, or the page was hidden)
 });
 /* The globe reveals the contact links as a short-lived, cinematic fan. */
 document.addEventListener('keydown', e => { if (e.key === 'Escape') showSection(null); });
@@ -986,7 +990,7 @@ async function boot() {
     document.documentElement.style.setProperty('--floor-light', CONFIG.darkFloorLight); document.documentElement.style.setProperty('--floor-blur', CONFIG.darkFloorBlur + 'px');
     roomPhotoEl.style.visibility = 'hidden'; floorPhotoEl.style.visibility = 'hidden';
     applyTheme();
-    await Promise.all([wait(loadMode(isLight ? 'light' : 'dark'), 90000), isLight ? wait(loadRoomPhoto(), 8000) : null, wait(document.fonts ? document.fonts.ready : null, 3000)]);
+    await Promise.all([wait(loadMode('light'), 90000), wait(loadMode('dark'), 90000), wait(loadRoomPhoto(), 8000), wait(document.fonts ? document.fonts.ready : null, 3000)]);   // both pictures and the room photo, so the light button always works
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
     showMode();
     menuMeasure(true); menuDraw(0);          // the image box is known now: row or column?
