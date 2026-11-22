@@ -310,7 +310,7 @@
 /* ===== Settings ===== */
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
-  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'], hold: 0, fade: 6000, fps: 30,   // ONE set of pictures for both modes, in the folder next to index.html (same proportions). ms. hold 0 = continuous loop, as in the autoloop
+  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'], hold: 0, fade: 6000, fps: 60,   // ONE set of pictures for both modes, in the folder next to index.html (same proportions). ms. hold 0 = continuous loop, as in the autoloop
              blendMode: 'multiply', blendAmount: .7, blendIntensity: .5 },   // the autoloop's look: a crossfade with a soft blend-mode wash in the middle (blendIntensity 0 = plain crossfade)
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
@@ -1064,18 +1064,22 @@ function slideNext() {
   const reuse = fitCache && fitCache.s === from && fitCache.c.width === W && fitCache.c.height === H, cA = reuse ? fitCache.c : fitCanvas(from.im), cB = fitCanvas(to.im);
   dz = { from, to, cA, cB, cC: blendCanvas(cA, cB), fA: fxSnap[slideIdx], fB: fxSnap[toIdx], e: 0 };
   const root = document.documentElement, a = (from.rgb || '').split(',').map(Number), b = (to.rgb || '').split(',').map(Number), t0 = performance.now();
-  let lastFx = -1e9, lastDraw = -1e9, lastRgb = '', lastK = '';
+  const steps = Math.max(2, Math.round(SL.fade / 1500));   // the glow changes in a few soft steps: each change repaints the big blurred wall and floor layers, so 20 a second made the picture stutter
+  let lastFx = -1e9, lastDraw = -1e9, lastSt = -1, lastOp = '';
   const tick = now => {
-    if (now - lastDraw < 1000 / SL.fps - 4 && now - t0 < SL.fade) { requestAnimationFrame(tick); return; }   // a slow dissolve looks identical at 30 fps and costs half
+    if (SL.fps < 60 && now - lastDraw < 1000 / SL.fps - 4 && now - t0 < SL.fade) { requestAnimationFrame(tick); return; }   // optional frame cap (fps < 60)
     lastDraw = now;
     const u = Math.min(1, (now - t0) / SL.fade), e = u * u * (3 - 2 * u); dz.e = e;
     drawDz();   // the picture itself
-    if (now - lastFx >= 50 || u === 1) {   // floor, glow and skirt: 20 times a second is plenty (they are soft and slow), and only when a value actually changed
-      lastFx = now; const k = from.k + (to.k - from.k) * e; fxK = k;
-      fxMix(dz.fA, dz.fB, e); skirtGroup.style.opacity = skirtOp(k).toFixed(3);
-      const kk = k.toFixed(2), rgb = (a.length === 3 && b.length === 3) ? a.map((v, i) => Math.round(v + (b[i] - v) * e)).join(', ') : '';
-      if (kk !== lastK) { lastK = kk; root.style.setProperty('--halo-k', kk); }
-      if (rgb && rgb !== lastRgb) { lastRgb = rgb; root.style.setProperty('--ambilight-rgb', rgb); }
+    if (now - lastFx >= 100 || u === 1) {   // the soft floor and skirt: 10 times a second is plenty
+      lastFx = now; const k = from.k + (to.k - from.k) * e; fxK = k; fxMix(dz.fA, dz.fB, e);
+      const op = skirtOp(k).toFixed(2); if (op !== lastOp) { lastOp = op; skirtGroup.style.opacity = op; }
+      const st = Math.round(e * steps);
+      if (st !== lastSt) {   // glow colour and strength: only a few times per dissolve
+        lastSt = st; const q = st / steps, kq = from.k + (to.k - from.k) * q;
+        if (a.length === 3 && b.length === 3) root.style.setProperty('--ambilight-rgb', a.map((v, i) => Math.round(v + (b[i] - v) * q)).join(', '));
+        root.style.setProperty('--halo-k', kq.toFixed(3));
+      }
     }
     if (u < 1) { requestAnimationFrame(tick); return; }
     fitCache = { s: to, c: cB }; slideIdx = toIdx; dz = null;   // arrived: no relayout, the canvas already shows the new picture and its floor
