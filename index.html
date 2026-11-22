@@ -99,7 +99,6 @@
   html.rp-in .floorphoto { transition: opacity 1.6s ease; }   /* only for the photo arriving late in dark mode; never during the theme switch */
   html[data-theme="light"] .floorphoto { display: none; }
   html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-  .shimmer { position: absolute; z-index: 1; left: 0; top: 0; width: 0; height: 0; pointer-events: none; mix-blend-mode: screen; }   /* tiny canvas stretched over the picture: the screen's sheen costs the compositor almost nothing */
   .contact { position: absolute; z-index: 2; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;
     background: linear-gradient(to bottom, rgba(0, 0, 0, .24) 0%, rgba(0, 0, 0, .13) 18%, rgba(0, 0, 0, .045) 48%, rgba(0, 0, 0, 0) 100%); }   /* soft contact shadow: strongest at the artwork's foot, fading into the reflection */
   #c { position: relative; z-index: 1; background: #000; transform-origin: 50% 100%;   /* the press-zoom grows upward from the bottom edge: the image can never sink onto the reflection */     /* image always on top of the halo and fully opaque */
@@ -311,9 +310,8 @@
 /* ===== Settings ===== */
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
-  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'], hold: 0, fade: 6000,   // ONE set of pictures for both modes, in the folder next to index.html (same proportions). ms. hold 0 = continuous loop, as in the autoloop
+  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'], hold: 0, fade: 6000, fps: 30,   // ONE set of pictures for both modes, in the folder next to index.html (same proportions). ms. hold 0 = continuous loop, as in the autoloop
              blendMode: 'multiply', blendAmount: .7, blendIntensity: .5 },   // the autoloop's look: a crossfade with a soft blend-mode wash in the middle (blendIntensity 0 = plain crossfade)
-  shimmer: 1,                                                           // screen shimmer and its reflection: 0 = off, 1 = default, 2 = twice as strong
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
   darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
@@ -503,7 +501,6 @@ function updateReflection(sr, ir) {
   reflMidCtx.clearRect(0, 0, mw, mh);
   reflMidCtx.translate(0, mh); reflMidCtx.scale(1, -1);            // mirror the bottom strip of the image
   reflMidCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, x0, 0, sw, mh);
-  if (shimCanvas.width && CONFIG.shimmer > 0) { reflMidCtx.globalCompositeOperation = 'lighter'; reflMidCtx.drawImage(shimCanvas, 0, shimCanvas.height * (1 - frac), shimCanvas.width, shimCanvas.height * frac, x0, 0, sw, mh); reflMidCtx.globalCompositeOperation = 'source-over'; }   // the same sheen, mirrored: the floor answers the screen
   reflMidCtx.restore();
   if (x0 > 0) {                                                    // continue the outermost pixel columns into the side margins
     reflMidCtx.drawImage(reflMid, x0, 0, 1, mh, 0, 0, x0, mh);
@@ -639,7 +636,7 @@ function layoutRoom() {   // the room photo and the wall/floor line follow the i
 function layoutFX() {     // room, reflection, skirt: redone only when the box, the picture or the mode changed
   const sr = homeEl.getBoundingClientRect();
   if (!cv.width || !sr.width || !sr.height) return;
-  layoutRoom(); shimPlace();
+  layoutRoom();
   updateReflection(sr, imgBox());
   const k = curInfo().k ?? .5;
   skirtGroup.style.opacity = skirtOp(k);   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
@@ -991,39 +988,6 @@ function reveal() {
   addEventListener('resize', scheduleLayout);
   setTimeout(loadRoomPhoto, 500);   // the room photo, quietly, once the page is up
 }
-/* ===== Shimmer: a living screen. A tiny overlay (96 px wide, stretched by CSS) holds three slow things: a faint breathing, an occasional soft glint that sweeps across, and a dim band rolling down like a screen seen through a camera. The reflection samples the same overlay, so the floor answers the screen. One loop at ~15 fps; no pixel is ever read back ===== */
-const SHIM = { base: .012, sweep: .10, roll: .035, breath: .035, sweepMs: 15000, rollMs: 6500 };   // strengths (alpha of white) and periods; CONFIG.shimmer scales them all
-const shimCanvas = document.createElement('canvas'), shimCtx = shimCanvas.getContext('2d'); shimCanvas.className = 'shimmer'; shimCanvas.setAttribute('aria-hidden', 'true'); homeEl.appendChild(shimCanvas);
-function shimPlace() {   // overlay sits exactly on the picture
-  const w = cv.offsetWidth, h = cv.offsetHeight; if (!w || !h) return;
-  shimCanvas.style.left = cv.offsetLeft + 'px'; shimCanvas.style.top = cv.offsetTop + 'px'; shimCanvas.style.width = w + 'px'; shimCanvas.style.height = h + 'px';
-  const sw = 96, sh = Math.max(8, Math.round(sw * h / w)); if (shimCanvas.width !== sw || shimCanvas.height !== sh) { shimCanvas.width = sw; shimCanvas.height = sh; }
-}
-function shimDraw(t) {   // returns the breathing value (-1..1)
-  const w = shimCanvas.width, h = shimCanvas.height, c = shimCtx, s = CONFIG.shimmer * (isLight ? .6 : 1), TAU = Math.PI * 2;
-  const b = Math.sin(t / 4100 * TAU) * .6 + Math.sin(t / 2700 * TAU + 1.3) * .4;   // two slow, unrelated waves: never a visible loop
-  c.clearRect(0, 0, w, h); if (!w || s <= 0) return b;
-  c.fillStyle = `rgba(255,255,255,${(SHIM.base * s * (1 + .6 * b)).toFixed(4)})`; c.fillRect(0, 0, w, h);
-  const ph = (t % SHIM.sweepMs) / SHIM.sweepMs;
-  if (ph < .45) {   // glint: a soft diagonal band crosses once, then the screen rests
-    const q = ph / .45, px = (-.3 + 1.6 * q) * w, hw = .24 * w, g = c.createLinearGradient(px - .94 * hw, h / 2 - .34 * hw, px + .94 * hw, h / 2 + .34 * hw), a = SHIM.sweep * s * Math.sin(Math.PI * q);
-    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, `rgba(255,255,255,${a.toFixed(4)})`); g.addColorStop(1, 'rgba(255,255,255,0)');
-    c.fillStyle = g; c.fillRect(0, 0, w, h);
-  }
-  const y = ((t % SHIM.rollMs) / SHIM.rollMs * 1.5 - .25) * h, bh = .3 * h, g2 = c.createLinearGradient(0, y - bh, 0, y + bh);   // rolling band
-  g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(.5, `rgba(255,255,255,${(SHIM.roll * s).toFixed(4)})`); g2.addColorStop(1, 'rgba(255,255,255,0)');
-  c.fillStyle = g2; c.fillRect(0, 0, w, h);
-  return b;
-}
-let fxLast = 0;
-function fxTick(now) {   // the one loop: overlay, skirt breathing, reflection (also during dissolves)
-  requestAnimationFrame(fxTick);
-  if (now - fxLast < 66) return; fxLast = now;
-  if (!slideList.length || !homeVisible || document.hidden || themeBusy || !W) return;
-  const b = shimDraw(now);
-  skirtGroup.style.opacity = (skirtOp(fxK) * (1 + SHIM.breath * CONFIG.shimmer * b)).toFixed(3);
-  updateReflection(homeEl.getBoundingClientRect(), imgBox());
-}
 /* ===== Slideshow: the pictures dissolve into each other. Everything on the floor (reflection, skirt, halo) is rebuilt from the same blended frame ===== */
 let slidesLoad = null, slideTimer = 0, slideBusy = false;
 function loadSlides() {
@@ -1050,24 +1014,53 @@ function blendCanvas(a, b) {   // picture A with picture B laid over it through 
   const x = c.getContext('2d'); x.drawImage(a, 0, 0); x.globalCompositeOperation = CONFIG.slides.blendMode; x.drawImage(b, 0, 0); return c;
 }
 let fitCache = null;   // the picture that just arrived is the next dissolve's starting picture: no need to build it twice
+/* ===== Floor layers during a dissolve. Mirror, blur and fade are linear, so (1-e)·floor(A) + e·floor(B) is the floor of the blended picture: each picture's floor is built ONCE (here), and a dissolve only mixes two small finished canvases ===== */
+let fxSnap = [], fxKeyAt = '';
+const fxKey = () => (innerHeight > innerWidth ? 'P' : 'L') + (isLight ? 'l' : 'd');   // the floor changes shape with orientation and with the lights; nothing else
+const copyCanvas = c => { const o = document.createElement('canvas'); o.width = c.width; o.height = c.height; o.getContext('2d').drawImage(c, 0, 0); return o; };
+function buildFX() {
+  if (!W || !slideList.length) return;
+  const sr = homeEl.getBoundingClientRect(); fxSnap = [];
+  for (const sl of slideList) { ctx.drawImage(fitCanvas(sl.im), 0, 0); updateReflection(sr, imgBox()); fxSnap.push({ r: copyCanvas(reflCanvas), k: copyCanvas(skirtCanvas) }); }
+  fxKeyAt = fxKey(); showMode();   // back to the real picture and its floor
+}
+function fxMix(a, b, e) {
+  for (const [cvs, key] of [[reflCanvas, 'r'], [skirtCanvas, 'k']]) {
+    const c = cvs.getContext('2d'); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, cvs.width, cvs.height);
+    c.globalAlpha = 1 - e; c.drawImage(a[key], 0, 0, cvs.width, cvs.height);
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha = e; c.drawImage(b[key], 0, 0, cvs.width, cvs.height);
+    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  }
+}
 function slideSchedule() { clearTimeout(slideTimer); if (slideList.length > 1) slideTimer = setTimeout(slideNext, CONFIG.slides.hold); }
 function slideNext() {
   if (slideBusy || !homeVisible || document.hidden || themeBusy) { clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
-  const from = slideList[slideIdx], toIdx = (slideIdx + 1) % slideList.length, to = slideList[toIdx];
+  const SL = CONFIG.slides, from = slideList[slideIdx], toIdx = (slideIdx + 1) % slideList.length, to = slideList[toIdx];
   if (reduceQ.matches || !W) { slideIdx = toIdx; showMode(); slideSchedule(); return; }
+  if (fxKeyAt !== fxKey() || fxSnap.length !== slideList.length) buildFX();
   slideBusy = true;
-  const SL = CONFIG.slides, reuse = fitCache && fitCache.s === from && fitCache.c.width === W && fitCache.c.height === H;
+  const reuse = fitCache && fitCache.s === from && fitCache.c.width === W && fitCache.c.height === H, fA = fxSnap[slideIdx], fB = fxSnap[toIdx];
   let cA = reuse ? fitCache.c : fitCanvas(from.im), cB = fitCanvas(to.im), cC = blendCanvas(cA, cB);
   const root = document.documentElement, a = (from.rgb || '').split(',').map(Number), b = (to.rgb || '').split(',').map(Number), t0 = performance.now();
+  let lastFx = -1e9, lastDraw = -1e9, lastRgb = '', lastK = '';
   const tick = now => {
-    const u = Math.min(1, (now - t0) / SL.fade), e = u * u * (3 - 2 * u), k = from.k + (to.k - from.k) * e;
+    if (now - lastDraw < 1000 / SL.fps - 4 && now - t0 < SL.fade) { requestAnimationFrame(tick); return; }   // a slow dissolve looks identical at 30 fps and costs half
+    lastDraw = now;
+    const u = Math.min(1, (now - t0) / SL.fade), e = u * u * (3 - 2 * u);
     if (cB.width !== W || cB.height !== H) { cA = fitCanvas(from.im); cB = fitCanvas(to.im); cC = blendCanvas(cA, cB); }   // window resized mid-dissolve
     ctx.drawImage(cA, 0, 0); ctx.globalAlpha = e; ctx.drawImage(cB, 0, 0);   // the picture itself, every frame: A, then B coming in...
     ctx.globalAlpha = Math.min(1, SL.blendAmount * Math.sin(Math.PI * e) * Math.min(1, e / .08, (1 - e) / .08) * SL.blendIntensity); ctx.drawImage(cC, 0, 0); ctx.globalAlpha = 1;   // ...with the blend wash peaking in the middle
-    if (a.length === 3 && b.length === 3) root.style.setProperty('--ambilight-rgb', a.map((v, i) => Math.round(v + (b[i] - v) * e)).join(', '));
-    root.style.setProperty('--halo-k', k.toFixed(3));
-    fxK = k;
-    if (u < 1) requestAnimationFrame(tick); else { fitCache = { s: to, c: cB }; slideIdx = toIdx; showMode(); slideBusy = false; slideSchedule(); }
+    if (now - lastFx >= 50 || u === 1) {   // floor, glow and skirt: 20 times a second is plenty (they are soft and slow), and only when a value actually changed
+      lastFx = now; const k = from.k + (to.k - from.k) * e; fxK = k;
+      fxMix(fA, fB, e); skirtGroup.style.opacity = skirtOp(k).toFixed(3);
+      const kk = k.toFixed(2), rgb = (a.length === 3 && b.length === 3) ? a.map((v, i) => Math.round(v + (b[i] - v) * e)).join(', ') : '';
+      if (kk !== lastK) { lastK = kk; root.style.setProperty('--halo-k', kk); }
+      if (rgb && rgb !== lastRgb) { lastRgb = rgb; root.style.setProperty('--ambilight-rgb', rgb); }
+    }
+    if (u < 1) { requestAnimationFrame(tick); return; }
+    fitCache = { s: to, c: cB }; slideIdx = toIdx;   // arrived: no relayout, the canvas already shows the new picture and its floor
+    if (Math.abs(to.im.naturalWidth / to.im.naturalHeight - aspect) > .01) showMode(); else { curImg = to.im; applyLook(); }
+    slideBusy = false; slideSchedule();
   };
   requestAnimationFrame(tick);
 }
@@ -1082,12 +1075,12 @@ async function boot() {
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
     showMode();
     menuMeasure(true); menuDraw(0);          // the image box is known now: row or column?
+    if (slideList.length > 1 && !reduceQ.matches) buildFX();   // every picture's floor, once, under the loading screen
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // let the first full frame paint under the loading screen
   } catch (e) { console.error(e); dbg('boot failed: ' + e); }
   dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
   reveal();
   slideSchedule();
-  if (!reduceQ.matches) requestAnimationFrame(fxTick);
 }
 boot();
 </script>
