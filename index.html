@@ -328,7 +328,7 @@ const REFL_ROOM_P = .14;     // portrait: same, shorter because the portrait ref
 const LAND_SCALE = 1.25;     // landscape: the image is 25% bigger than the plain fit ...
 const LAND_SHRINK = .935;    // landscape: then scaled to 93.5% (= 15% smaller, then 10% bigger)
 const REFL_ROOM_MIN = .03;   // ... but always keeps at least this share of its height free under it (a sliver of reflection), so it never leaves the screen
-const IMG_ZOOM = .88;         // whole home image (and its room, reflection, halo) scaled to 80% of the fitted size, kept on the same centre: 1 = no change
+const IMG_ZOOM = 1;         // whole home image (and its room, reflection, halo) scaled to 80% of the fitted size, kept on the same centre: 1 = no change
 const SIDE_P = 3;            // portrait: the lateral space beside the image is this many times the landscape one
 const HALO_FULL_LUM = .30;   // overall image brightness at which the halo reaches its full (50%) strength
 const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d', { willReadFrequently: true });
