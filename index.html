@@ -394,7 +394,7 @@ function buildSkTex(sw, sh) {
   }
   c.putImageData(id, 0, 0); skTexKey = sw + 'x' + sh;
 }
-function updateSkirt(sr, ir, h) {
+function updateSkirt(sr, ir, h, src = cv) {
   /* The skirt is an elliptical pool of light on the floor, centered a little below the screen's base line: its top is rounded and only
      reaches the base line faintly, so it grows out of the floor around the reflection instead of starting at the image's sides */
   const spread = Math.round(ir.width * (sr.height > sr.width ? SKIRT_SPREAD_P : SKIRT_SPREAD)), up = 0, down = Math.round(h * 1.1);   // up = 0: nothing rises beside the screen
@@ -411,7 +411,7 @@ function updateSkirt(sr, ir, h) {
   const frac = Math.min(1, down / ir.height);
   skTinyCtx.clearRect(0, 0, tw, th);
   skTinyCtx.save(); skTinyCtx.translate(0, th); skTinyCtx.scale(1, -1);
-  skTinyCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, tx0, 0, tiw, th - ty0);   // mirrored bottom of the image, starting at the base line
+  skTinyCtx.drawImage(src, 0, src.height * (1 - frac), src.width, src.height * frac, tx0, 0, tiw, th - ty0);   // mirrored bottom of the image, starting at the base line
   skTinyCtx.restore();
   skTinyCtx.drawImage(skTiny, tx0, ty0, tiw, 1, tx0, 0, tiw, ty0);                                        // the floor behind the screen: the base-line colors stretched up
   if (tx0 > 0) {                                                                                           // carry the edge colors out to the sides
@@ -476,7 +476,7 @@ function buildReflMask(rw, rh, padT) {
   c.putImageData(id, 0, 0);
   reflMaskKey = rw + 'x' + rh + 'x' + padT;
 }
-function updateReflection(sr, ir) {
+function updateReflection(sr, ir, src = cv) {
   const h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));   // vertical stage: brief reflection (and, through h, a brief skirt); whole pixels, like the image
   if (!homeVisible || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; contactEl.style.display = 'none'; return; }   // hidden in the sections
   const padPx = Math.round(ir.width * REFL_PAD), W = ir.width + 2 * padPx;                       // whole-pixel box, symmetric around the image: no half-pixel edges that can shift against it
@@ -491,7 +491,7 @@ function updateReflection(sr, ir) {
   reflCanvas.style.width = W + 'px';
   reflCanvas.style.height = h + 'px';
   reflCanvas.style.transform = 'none';
-  updateSkirt(sr, ir, h);
+  updateSkirt(sr, ir, h, src);
   const rw = REFL_W, rh = Math.max(2, Math.round(rw * h / W)), padT = Math.round(rw * padPx / W);
   if (reflCanvas.width !== rw || reflCanvas.height !== rh) { reflCanvas.width = rw; reflCanvas.height = rh; }
   const mw = rw * 2, mh = rh * 2, x0 = padT * 2, sw = mw - 2 * x0;   // sw: the image width, in mid-canvas pixels
@@ -500,7 +500,7 @@ function updateReflection(sr, ir) {
   reflMidCtx.save();
   reflMidCtx.clearRect(0, 0, mw, mh);
   reflMidCtx.translate(0, mh); reflMidCtx.scale(1, -1);            // mirror the bottom strip of the image
-  reflMidCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, x0, 0, sw, mh);
+  reflMidCtx.drawImage(src, 0, src.height * (1 - frac), src.width, src.height * frac, x0, 0, sw, mh);
   reflMidCtx.restore();
   if (x0 > 0) {                                                    // continue the outermost pixel columns into the side margins
     reflMidCtx.drawImage(reflMid, x0, 0, 1, mh, 0, 0, x0, mh);
@@ -542,6 +542,7 @@ function updateReflection(sr, ir) {
 }
 
 /* ===== State ===== */
+let dz = null;   // the dissolve in flight, or null: while it runs, every repaint (resize, lights switch) redraws the CURRENT blend instead of the starting picture
 let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0;
 const slideList = []; let slideIdx = 0;          // the slideshow: [{ im, rgb, k }], shared by both modes
 const curInfo = () => slideList[slideIdx] || {};
@@ -612,6 +613,7 @@ function size() {
 }
 function paint() {
   if (!W) return;
+  if (dz) { drawDz(); return; }
   let ok = false;
   if (curImg) {
     try {
@@ -638,11 +640,12 @@ function layoutFX() {     // room, reflection, skirt: redone only when the box, 
   if (!cv.width || !sr.width || !sr.height) return;
   layoutRoom();
   updateReflection(sr, imgBox());
-  const k = curInfo().k ?? .5;
-  skirtGroup.style.opacity = skirtOp(k);   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
+  skirtGroup.style.opacity = skirtOp(fxK);   // fxK follows the picture on screen, also mid-dissolve
+  if (dz) fxMix(dz.fA, dz.fB, dz.e);         // the floor stays on the dissolve's own mix   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
 }
 function layoutImage() { setBox(); size(); paint(); layoutFX(); }
 function applyLook() {    // glow colour and halo strength of the active picture
+  if (dz) return;         // mid-dissolve the dissolve itself eases them
   const i = curInfo(), root = document.documentElement; fxK = i.k ?? .5;
   if (i.rgb) root.style.setProperty('--ambilight-rgb', i.rgb);
   root.style.setProperty('--halo-k', (i.k ?? .5).toFixed(3));
@@ -663,7 +666,7 @@ async function switchTheme(pref) {
   const next = resolveLight(pref); themePref = pref;
   if (next === isLight) { applyTheme(); return; }
   themeBusy = true; footLock = true;
-  const root = document.documentElement, apply = () => { applyTheme(); showMode(); };
+  const root = document.documentElement, apply = () => { applyTheme(); showMode(); refreshSkirts(); };
   if (next) await wait(loadRoomPhoto(), 4000);
   themeBtn.classList.remove('wait');
   if (reduceQ.matches) apply();
@@ -991,18 +994,25 @@ function reveal() {
 /* ===== Slideshow: the pictures dissolve into each other. Everything on the floor (reflection, skirt, halo) is rebuilt from the same blended frame ===== */
 let slidesLoad = null, slideTimer = 0, slideBusy = false;
 function loadSlides() {
-  return slidesLoad || (slidesLoad = Promise.all(CONFIG.slides.files.map(f => new Promise(res => {
-    const im = new Image(), src = `${CONFIG.slides.dir}${f}?v=${CONFIG.v}`;
+  const SL = CONFIG.slides;
+  const one = (f, tries) => new Promise(res => {
+    const im = new Image(), src = `${SL.dir}${f}?v=${CONFIG.v}${tries ? '&r=' + tries : ''}`;
+    const fail = why => { console.warn(`slide ${src}: ${why}`); dbg(`slide ${src}: ${why}`); if (tries < 2) setTimeout(() => one(f, tries + 1).then(res), 700); else res(null); };
     const done = () => {
-      if (!im.naturalWidth) { console.warn('Could not decode ' + src); dbg(`slide ${src}: could not decode`); res(null); return; }
-      dbg(`slide ${src}: ${im.naturalWidth}x${im.naturalHeight}`);
+      if (!im.naturalWidth) { fail('could not decode'); return; }
       let a = {}; try { a = analyze(im); } catch (e) {}   // glow colour and brightness, read once per picture, never per frame
-      res({ im, rgb: a.rgb || null, k: a.k ?? .5 });
+      const kk = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');   // longest side capped at 2048 px: five full camera photos would exhaust an iPad's memory
+      c.width = Math.round(im.naturalWidth * kk); c.height = Math.round(im.naturalHeight * kk); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      c.naturalWidth = c.width; c.naturalHeight = c.height;
+      const th = document.createElement('canvas'); th.width = 640; th.height = Math.max(8, Math.round(640 * c.height / c.width)); th.getContext('2d').drawImage(c, 0, 0, th.width, th.height);   // the floor is built from this small copy
+      dbg(`slide ${src}: ${im.naturalWidth}x${im.naturalHeight}`);
+      res({ im: c, thumb: th, rgb: a.rgb || null, k: a.k ?? .5 });
     };
     im.onload = () => (im.decode ? im.decode().then(done, done) : done());
-    im.onerror = () => { console.warn('Could not load ' + src); dbg(`slide ${src}: FAILED to load (missing file or wrong name?)`); res(null); };
+    im.onerror = () => fail('FAILED to load (missing file or wrong name?)');
     im.src = src;
-  }))).then(a => { slideList.push(...a.filter(Boolean)); return slideList; }));
+  });
+  return slidesLoad || (slidesLoad = Promise.all(SL.files.map(f => one(f, 0))).then(a => { slideList.push(...a.filter(Boolean)); return slideList; }));
 }
 function fitCanvas(im) {   // a picture cover-fitted to the canvas, ready to be stamped every frame
   const c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -1016,13 +1026,19 @@ function blendCanvas(a, b) {   // picture A with picture B laid over it through 
 let fitCache = null;   // the picture that just arrived is the next dissolve's starting picture: no need to build it twice
 /* ===== Floor layers during a dissolve. Mirror, blur and fade are linear, so (1-e)·floor(A) + e·floor(B) is the floor of the blended picture: each picture's floor is built ONCE (here), and a dissolve only mixes two small finished canvases ===== */
 let fxSnap = [], fxKeyAt = '';
-const fxKey = () => (innerHeight > innerWidth ? 'P' : 'L') + (isLight ? 'l' : 'd');   // the floor changes shape with orientation and with the lights; nothing else
+const fxKey = () => innerHeight > innerWidth ? 'P' : 'L';   // the floor changes shape only with orientation
 const copyCanvas = c => { const o = document.createElement('canvas'); o.width = c.width; o.height = c.height; o.getContext('2d').drawImage(c, 0, 0); return o; };
-function buildFX() {
+function fxRestore() { if (dz) fxMix(dz.fA, dz.fB, dz.e); else if (fxSnap[slideIdx]) fxMix(fxSnap[slideIdx], fxSnap[slideIdx], 0); }   // same task as the rebuild: no frame ever shows a half-built floor
+function buildFX() {   // every picture's floor, once, from its thumbnail: the visible canvas is never touched
   if (!W || !slideList.length) return;
-  const sr = homeEl.getBoundingClientRect(); fxSnap = [];
-  for (const sl of slideList) { ctx.drawImage(fitCanvas(sl.im), 0, 0); updateReflection(sr, imgBox()); fxSnap.push({ r: copyCanvas(reflCanvas), k: copyCanvas(skirtCanvas) }); }
-  fxKeyAt = fxKey(); showMode();   // back to the real picture and its floor
+  const sr = homeEl.getBoundingClientRect(), ir = imgBox(); fxSnap = [];
+  for (const sl of slideList) { updateReflection(sr, ir, sl.thumb); fxSnap.push({ r: copyCanvas(reflCanvas), k: copyCanvas(skirtCanvas) }); }
+  fxKeyAt = fxKey(); fxRestore();
+}
+function refreshSkirts() {   // lights switched: only the skirt depends on them (dark floors follow the picture's brightness), so only it is rebuilt
+  if (!fxSnap.length || !W) return;
+  const sr = homeEl.getBoundingClientRect(), ir = imgBox(), h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));
+  slideList.forEach((sl, i) => { updateSkirt(sr, ir, h, sl.thumb); fxSnap[i].k = copyCanvas(skirtCanvas); }); fxRestore();
 }
 function fxMix(a, b, e) {
   for (const [cvs, key] of [[reflCanvas, 'r'], [skirtCanvas, 'k']]) {
@@ -1033,32 +1049,36 @@ function fxMix(a, b, e) {
   }
 }
 function slideSchedule() { clearTimeout(slideTimer); if (slideList.length > 1) slideTimer = setTimeout(slideNext, CONFIG.slides.hold); }
+function drawDz() {   // one frame of the dissolve in flight: A, then B coming in, with the blend wash peaking in the middle
+  const d = dz, SL = CONFIG.slides;
+  if (d.cB.width !== W || d.cB.height !== H) { d.cA = fitCanvas(d.from.im); d.cB = fitCanvas(d.to.im); d.cC = blendCanvas(d.cA, d.cB); }   // window resized mid-dissolve
+  ctx.drawImage(d.cA, 0, 0); ctx.globalAlpha = d.e; ctx.drawImage(d.cB, 0, 0);
+  ctx.globalAlpha = Math.min(1, SL.blendAmount * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1;
+}
 function slideNext() {
   if (slideBusy || !homeVisible || document.hidden || themeBusy) { clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
   const SL = CONFIG.slides, from = slideList[slideIdx], toIdx = (slideIdx + 1) % slideList.length, to = slideList[toIdx];
   if (reduceQ.matches || !W) { slideIdx = toIdx; showMode(); slideSchedule(); return; }
   if (fxKeyAt !== fxKey() || fxSnap.length !== slideList.length) buildFX();
   slideBusy = true;
-  const reuse = fitCache && fitCache.s === from && fitCache.c.width === W && fitCache.c.height === H, fA = fxSnap[slideIdx], fB = fxSnap[toIdx];
-  let cA = reuse ? fitCache.c : fitCanvas(from.im), cB = fitCanvas(to.im), cC = blendCanvas(cA, cB);
+  const reuse = fitCache && fitCache.s === from && fitCache.c.width === W && fitCache.c.height === H, cA = reuse ? fitCache.c : fitCanvas(from.im), cB = fitCanvas(to.im);
+  dz = { from, to, cA, cB, cC: blendCanvas(cA, cB), fA: fxSnap[slideIdx], fB: fxSnap[toIdx], e: 0 };
   const root = document.documentElement, a = (from.rgb || '').split(',').map(Number), b = (to.rgb || '').split(',').map(Number), t0 = performance.now();
   let lastFx = -1e9, lastDraw = -1e9, lastRgb = '', lastK = '';
   const tick = now => {
     if (now - lastDraw < 1000 / SL.fps - 4 && now - t0 < SL.fade) { requestAnimationFrame(tick); return; }   // a slow dissolve looks identical at 30 fps and costs half
     lastDraw = now;
-    const u = Math.min(1, (now - t0) / SL.fade), e = u * u * (3 - 2 * u);
-    if (cB.width !== W || cB.height !== H) { cA = fitCanvas(from.im); cB = fitCanvas(to.im); cC = blendCanvas(cA, cB); }   // window resized mid-dissolve
-    ctx.drawImage(cA, 0, 0); ctx.globalAlpha = e; ctx.drawImage(cB, 0, 0);   // the picture itself, every frame: A, then B coming in...
-    ctx.globalAlpha = Math.min(1, SL.blendAmount * Math.sin(Math.PI * e) * Math.min(1, e / .08, (1 - e) / .08) * SL.blendIntensity); ctx.drawImage(cC, 0, 0); ctx.globalAlpha = 1;   // ...with the blend wash peaking in the middle
+    const u = Math.min(1, (now - t0) / SL.fade), e = u * u * (3 - 2 * u); dz.e = e;
+    drawDz();   // the picture itself
     if (now - lastFx >= 50 || u === 1) {   // floor, glow and skirt: 20 times a second is plenty (they are soft and slow), and only when a value actually changed
       lastFx = now; const k = from.k + (to.k - from.k) * e; fxK = k;
-      fxMix(fA, fB, e); skirtGroup.style.opacity = skirtOp(k).toFixed(3);
+      fxMix(dz.fA, dz.fB, e); skirtGroup.style.opacity = skirtOp(k).toFixed(3);
       const kk = k.toFixed(2), rgb = (a.length === 3 && b.length === 3) ? a.map((v, i) => Math.round(v + (b[i] - v) * e)).join(', ') : '';
       if (kk !== lastK) { lastK = kk; root.style.setProperty('--halo-k', kk); }
       if (rgb && rgb !== lastRgb) { lastRgb = rgb; root.style.setProperty('--ambilight-rgb', rgb); }
     }
     if (u < 1) { requestAnimationFrame(tick); return; }
-    fitCache = { s: to, c: cB }; slideIdx = toIdx;   // arrived: no relayout, the canvas already shows the new picture and its floor
+    fitCache = { s: to, c: cB }; slideIdx = toIdx; dz = null;   // arrived: no relayout, the canvas already shows the new picture and its floor
     if (Math.abs(to.im.naturalWidth / to.im.naturalHeight - aspect) > .01) showMode(); else { curImg = to.im; applyLook(); }
     slideBusy = false; slideSchedule();
   };
