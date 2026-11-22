@@ -310,8 +310,10 @@
 /* ===== Settings ===== */
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
-  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'], hold: 0, fade: 6000, fps: 60,   // ONE set of pictures for both modes, in the folder next to index.html (same proportions). ms. hold 0 = continuous loop, as in the autoloop
-             blendMode: 'multiply', blendAmount: .7, blendIntensity: .5 },   // the autoloop's look: a crossfade with a soft blend-mode wash in the middle (blendIntensity 0 = plain crossfade)
+  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'],   // ONE set of pictures for both modes, in the folder next to index.html (same proportions)
+            fade: 3636, hold: 0, fps: 60, order: 'sequence', style: 'blend', blendMode: 'multiply', blendAmount: .7, blendIntensity: .5,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
+            // As in the autoloop, a NEW random value is drawn for each of these at the start of every dissolve. [min, max] = a number between the two, [..., ...] of words = one random pick. Delete a line to keep that value fixed; random: null = no randomness at all
+            random: { fade: [2425, 5455], hold: [0, 1515], order: ['sequence', 'shuffle'], style: ['blend', 'crossfade'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-dodge', 'color-burn', 'difference', 'luminosity'], blendAmount: [.2, 1] } },
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
   darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
@@ -328,7 +330,7 @@ const REFL_ROOM_P = .14;     // portrait: same, shorter because the portrait ref
 const LAND_SCALE = 1.25;     // landscape: the image is 25% bigger than the plain fit ...
 const LAND_SHRINK = .935;    // landscape: then scaled to 93.5% (= 15% smaller, then 10% bigger)
 const REFL_ROOM_MIN = .03;   // ... but always keeps at least this share of its height free under it (a sliver of reflection), so it never leaves the screen
-const IMG_ZOOM = 1;         // whole home image (and its room, reflection, halo) scaled to 80% of the fitted size, kept on the same centre: 1 = no change
+const IMG_ZOOM = .8;         // whole home image (and its room, reflection, halo) scaled to 80% of the fitted size, kept on the same centre: 1 = no change
 const SIDE_P = 3;            // portrait: the lateral space beside the image is this many times the landscape one
 const HALO_FULL_LUM = .30;   // overall image brightness at which the halo reaches its full (50%) strength
 const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d', { willReadFrequently: true });
@@ -1019,9 +1021,9 @@ function fitCanvas(im) {   // a picture cover-fitted to the canvas, ready to be 
   const x = c.getContext('2d'), k = Math.max(W / im.naturalWidth, H / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k;
   x.imageSmoothingQuality = 'high'; x.drawImage(im, (W - w) * CONFIG.focus[0], (H - h) * CONFIG.focus[1], w, h); return c;
 }
-function blendCanvas(a, b) {   // picture A with picture B laid over it through the blend mode: mixed in at the middle of the dissolve
+function blendCanvas(a, b, mode) {   // picture A with picture B laid over it through the blend mode: mixed in at the middle of the dissolve
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const x = c.getContext('2d'); x.drawImage(a, 0, 0); x.globalCompositeOperation = CONFIG.slides.blendMode; x.drawImage(b, 0, 0); return c;
+  const x = c.getContext('2d'); x.drawImage(a, 0, 0); x.globalCompositeOperation = mode; x.drawImage(b, 0, 0); return c;
 }
 let fitCache = null;   // the picture that just arrived is the next dissolve's starting picture: no need to build it twice
 /* ===== Floor layers during a dissolve. Mirror, blur and fade are linear, so (1-e)·floor(A) + e·floor(B) is the floor of the blended picture: each picture's floor is built ONCE (here), and a dissolve only mixes two small finished canvases ===== */
@@ -1048,28 +1050,37 @@ function fxMix(a, b, e) {
     c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
   }
 }
-function slideSchedule() { clearTimeout(slideTimer); if (slideList.length > 1) slideTimer = setTimeout(slideNext, CONFIG.slides.hold); }
+let slideHold = CONFIG.slides.hold;   // the pause after the current dissolve (drawn together with its look)
+function slideRoll() {   // the look of the next dissolve: the fixed values, with a fresh random draw over the ones listed in CONFIG.slides.random
+  const SL = CONFIG.slides, P = { fade: SL.fade, hold: SL.hold, order: SL.order, style: SL.style, blendMode: SL.blendMode, blendAmount: SL.blendAmount };
+  for (const k in (SL.random || {})) { const r = SL.random[k]; P[k] = typeof r[0] === 'number' ? (r[1] > 10 ? Math.round(r[0] + Math.random() * (r[1] - r[0])) : r[0] + Math.random() * (r[1] - r[0])) : r[Math.floor(Math.random() * r.length)]; }
+  return P;
+}
+function slideSchedule() { clearTimeout(slideTimer); if (slideList.length > 1) slideTimer = setTimeout(slideNext, slideHold); }
 function drawDz() {   // one frame of the dissolve in flight: A, then B coming in, with the blend wash peaking in the middle
   const d = dz, SL = CONFIG.slides;
-  if (d.cB.width !== W || d.cB.height !== H) { d.cA = fitCanvas(d.from.im); d.cB = fitCanvas(d.to.im); d.cC = blendCanvas(d.cA, d.cB); }   // window resized mid-dissolve
+  if (d.cB.width !== W || d.cB.height !== H) { d.cA = fitCanvas(d.from.im); d.cB = fitCanvas(d.to.im); if (d.cC) d.cC = blendCanvas(d.cA, d.cB, d.mode); }   // window resized mid-dissolve
   ctx.drawImage(d.cA, 0, 0); ctx.globalAlpha = d.e; ctx.drawImage(d.cB, 0, 0);
-  ctx.globalAlpha = Math.min(1, SL.blendAmount * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1;
+  if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1; }
 }
 function slideNext() {
   if (slideBusy || !homeVisible || document.hidden || themeBusy) { clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
-  const SL = CONFIG.slides, from = slideList[slideIdx], toIdx = (slideIdx + 1) % slideList.length, to = slideList[toIdx];
+  const SL = CONFIG.slides, P = slideRoll(), n = slideList.length, from = slideList[slideIdx];
+  let toIdx = (slideIdx + 1) % n; if (P.order === 'shuffle' && n > 2) do { toIdx = Math.floor(Math.random() * n); } while (toIdx === slideIdx);
+  const to = slideList[toIdx]; slideHold = P.hold;
   if (reduceQ.matches || !W) { slideIdx = toIdx; showMode(); slideSchedule(); return; }
   if (fxKeyAt !== fxKey() || fxSnap.length !== slideList.length) buildFX();
   slideBusy = true;
   const reuse = fitCache && fitCache.s === from && fitCache.c.width === W && fitCache.c.height === H, cA = reuse ? fitCache.c : fitCanvas(from.im), cB = fitCanvas(to.im);
-  dz = { from, to, cA, cB, cC: blendCanvas(cA, cB), fA: fxSnap[slideIdx], fB: fxSnap[toIdx], e: 0 };
+  const wash = P.style === 'blend' && SL.blendIntensity > 0;   // plain crossfade: no wash layer at all
+  dz = { from, to, cA, cB, cC: wash ? blendCanvas(cA, cB, P.blendMode) : null, mode: P.blendMode, amt: P.blendAmount, fA: fxSnap[slideIdx], fB: fxSnap[toIdx], e: 0 };
   const root = document.documentElement, a = (from.rgb || '').split(',').map(Number), b = (to.rgb || '').split(',').map(Number), t0 = performance.now();
-  const steps = Math.max(2, Math.round(SL.fade / 1500));   // the glow changes in a few soft steps: each change repaints the big blurred wall and floor layers, so 20 a second made the picture stutter
+  const steps = Math.max(2, Math.round(P.fade / 1500));   // the glow changes in a few soft steps: each change repaints the big blurred wall and floor layers, so 20 a second made the picture stutter
   let lastFx = -1e9, lastDraw = -1e9, lastSt = -1, lastOp = '';
   const tick = now => {
-    if (SL.fps < 60 && now - lastDraw < 1000 / SL.fps - 4 && now - t0 < SL.fade) { requestAnimationFrame(tick); return; }   // optional frame cap (fps < 60)
+    if (SL.fps < 60 && now - lastDraw < 1000 / SL.fps - 4 && now - t0 < P.fade) { requestAnimationFrame(tick); return; }   // optional frame cap (fps < 60)
     lastDraw = now;
-    const u = Math.min(1, (now - t0) / SL.fade), e = u * u * (3 - 2 * u); dz.e = e;
+    const u = Math.min(1, (now - t0) / P.fade), e = u * u * (3 - 2 * u); dz.e = e;
     drawDz();   // the picture itself
     if (now - lastFx >= 100 || u === 1) {   // the soft floor and skirt: 10 times a second is plenty
       lastFx = now; const k = from.k + (to.k - from.k) * e; fxK = k; fxMix(dz.fA, dz.fB, e);
