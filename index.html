@@ -99,6 +99,7 @@
   html.rp-in .floorphoto { transition: opacity 1.6s ease; }   /* only for the photo arriving late in dark mode; never during the theme switch */
   html[data-theme="light"] .floorphoto { display: none; }
   html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .shimmer { position: absolute; z-index: 1; left: 0; top: 0; width: 0; height: 0; pointer-events: none; mix-blend-mode: screen; }   /* tiny canvas stretched over the picture: the screen's sheen costs the compositor almost nothing */
   .contact { position: absolute; z-index: 2; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;
     background: linear-gradient(to bottom, rgba(0, 0, 0, .24) 0%, rgba(0, 0, 0, .13) 18%, rgba(0, 0, 0, .045) 48%, rgba(0, 0, 0, 0) 100%); }   /* soft contact shadow: strongest at the artwork's foot, fading into the reflection */
   #c { position: relative; z-index: 1; background: #000; transform-origin: 50% 100%;   /* the press-zoom grows upward from the bottom edge: the image can never sink onto the reflection */     /* image always on top of the halo and fully opaque */
@@ -310,7 +311,8 @@
 /* ===== Settings ===== */
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
-  images: { light: 'imagelightmode.jpg', dark: 'imagedarkmode.jpg' },   // next to index.html; the same proportions for both is best
+  slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'], hold: 2500, fade: 1000 },   // ONE set of pictures for both modes, in the folder next to index.html (same proportions). hold/fade in ms
+  shimmer: 1,                                                           // screen shimmer and its reflection: 0 = off, 1 = default, 2 = twice as strong
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
   darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
@@ -380,7 +382,7 @@ function imgBox() {
   const s = homeEl.getBoundingClientRect(), l = s.left + cv.offsetLeft, t = s.top + cv.offsetTop, w = cv.offsetWidth, h = cv.offsetHeight;
   return { left: l, top: t, width: w, height: h, right: l + w, bottom: t + h };
 }
-const skirtCtx = skirtCanvas.getContext('2d'), skTiny = mk(), skTinyCtx = skTiny.getContext('2d');
+const skirtCtx = skirtCanvas.getContext('2d'), skTiny = mk(), skTinyCtx = skTiny.getContext('2d', { willReadFrequently: true });   // read back every frame by the skirt: keep it on the CPU
 const SKIRT_W = 192, SKIRT_SPREAD = .6, SKIRT_SPREAD_P = .4, SKIRT_OPACITY = .55;   // SKIRT_SPREAD: how far it reaches past each side (fraction of the image width)
 const skMask = mk(), skTex = mk(), skLum = mk(); let skTexKey = '';
 /* Floor texture for the skirt (same family as the reflection's): long horizontal streaks plus fine grain, fixed, so the glow reads as light ON a surface and not as fog in the air */
@@ -500,6 +502,7 @@ function updateReflection(sr, ir) {
   reflMidCtx.clearRect(0, 0, mw, mh);
   reflMidCtx.translate(0, mh); reflMidCtx.scale(1, -1);            // mirror the bottom strip of the image
   reflMidCtx.drawImage(cv, 0, cv.height * (1 - frac), cv.width, cv.height * frac, x0, 0, sw, mh);
+  if (shimCanvas.width && CONFIG.shimmer > 0) { reflMidCtx.globalCompositeOperation = 'lighter'; reflMidCtx.drawImage(shimCanvas, 0, shimCanvas.height * (1 - frac), shimCanvas.width, shimCanvas.height * frac, x0, 0, sw, mh); reflMidCtx.globalCompositeOperation = 'source-over'; }   // the same sheen, mirrored: the floor answers the screen
   reflMidCtx.restore();
   if (x0 > 0) {                                                    // continue the outermost pixel columns into the side margins
     reflMidCtx.drawImage(reflMid, x0, 0, 1, mh, 0, 0, x0, mh);
@@ -542,7 +545,10 @@ function updateReflection(sr, ir) {
 
 /* ===== State ===== */
 let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0;
-const pics = {}, info = {}, loads = {};          // pics[mode]: the decoded image; info[mode]: its glow colour and brightness (read once); loads[mode]: the loading promise
+const slideList = []; let slideIdx = 0;          // the slideshow: [{ im, rgb, k }], shared by both modes
+const curInfo = () => slideList[slideIdx] || {};
+const skirtOp = k => SKIRT_OPACITY * (isLight ? 1 : .2 + .8 * k);
+let fxK = .5;                                    // brightness (0-1) of the picture on screen, eased during a dissolve: drives the skirt
 const wait = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
 /* Add ?debug to the address (e.g. demmagucian.github.io/?debug) to see on screen what loaded and what failed */
 const DEBUG = new URLSearchParams(location.search).has('debug');
@@ -566,7 +572,7 @@ function applyTheme() {
   const to = isLight ? 'dark' : 'light'; themeBtn.setAttribute('aria-label', `Switch to ${to} mode`); themeBtn.title = `Switch to ${to} mode`;
 }
 
-/* ===== Pictures: one per mode, read once ===== */
+/* ===== Pictures: glow colour and brightness, read once per picture ===== */
 function analyze(im) {   // glow colour (lit pixels only) and overall brightness of a picture: the halo strength
   const w = 48, h = Math.max(1, Math.round(w * im.naturalHeight / im.naturalWidth)), c = mk(); c.width = w; c.height = h;
   const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, w, h);
@@ -583,20 +589,6 @@ function analyze(im) {   // glow colour (lit pixels only) and overall brightness
     k = Math.min(1, Math.pow(lumSum / (p.length / 4) / HALO_FULL_LUM, 1.2));
   } catch (e) { /* pixel reading blocked (e.g. opened as a local file): the halo keeps neutral values */ }
   return { rgb, k };
-}
-function loadMode(m) {
-  return loads[m] || (loads[m] = new Promise(res => {
-    const im = new Image(), src = `${CONFIG.images[m]}?v=${CONFIG.v}`;
-    const done = () => {
-      if (!im.naturalWidth) { console.warn('Could not decode ' + src); dbg(`${m}: could not decode ${src}`); res(null); return; }
-      try { info[m] = analyze(im); } catch (e) { dbg(`${m}: analyze failed ${e}`); }
-      pics[m] = im; dbg(`${m}: loaded ${im.naturalWidth}x${im.naturalHeight}`); res(im);
-      if (revealed && !curImg && m === (isLight ? 'light' : 'dark')) showMode();   // arrived after the page was shown
-    };
-    im.onload = () => (im.decode ? im.decode().then(done, e => { dbg(`${m}: decode() said ${e}`); done(); }) : done());
-    im.onerror = () => { console.warn('Could not load ' + src); dbg(`${m}: FAILED to load ${src}`); res(null); };
-    im.src = src;
-  }));
 }
 let roomLoad = null;
 function loadRoomPhoto() {
@@ -646,19 +638,19 @@ function layoutRoom() {   // the room photo and the wall/floor line follow the i
 function layoutFX() {     // room, reflection, skirt: redone only when the box, the picture or the mode changed
   const sr = homeEl.getBoundingClientRect();
   if (!cv.width || !sr.width || !sr.height) return;
-  layoutRoom();
+  layoutRoom(); shimPlace();
   updateReflection(sr, imgBox());
-  const k = (info[isLight ? 'light' : 'dark'] || {}).k ?? .5;
-  skirtGroup.style.opacity = (SKIRT_OPACITY * (isLight ? 1 : .2 + .8 * k)).toFixed(3);   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
+  const k = curInfo().k ?? .5;
+  skirtGroup.style.opacity = skirtOp(k);   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
 }
 function layoutImage() { setBox(); size(); paint(); layoutFX(); }
 function applyLook() {    // glow colour and halo strength of the active picture
-  const i = info[isLight ? 'light' : 'dark'] || {}, root = document.documentElement;
+  const i = curInfo(), root = document.documentElement; fxK = i.k ?? .5;
   if (i.rgb) root.style.setProperty('--ambilight-rgb', i.rgb);
   root.style.setProperty('--halo-k', (i.k ?? .5).toFixed(3));
 }
 function showMode() {     // puts the active mode's picture on screen
-  curImg = pics[isLight ? 'light' : 'dark'] || null;
+  curImg = slideList[slideIdx] ? slideList[slideIdx].im : null;
   if (curImg) aspect = curImg.naturalWidth / curImg.naturalHeight;
   applyLook(); layoutImage();
 }
@@ -674,8 +666,7 @@ async function switchTheme(pref) {
   if (next === isLight) { applyTheme(); return; }
   themeBusy = true; footLock = true;
   const root = document.documentElement, apply = () => { applyTheme(); showMode(); };
-  if (!pics[next ? 'light' : 'dark']) themeBtn.classList.add('wait');   // the other picture is normally ready already; if not, the button breathes until it is
-  await Promise.all([loadMode(next ? 'light' : 'dark'), next ? wait(loadRoomPhoto(), 4000) : null]);
+  if (next) await wait(loadRoomPhoto(), 4000);
   themeBtn.classList.remove('wait');
   if (reduceQ.matches) apply();
   else if (document.startViewTransition) {
@@ -997,7 +988,76 @@ function reveal() {
   let first = true;
   if ('ResizeObserver' in window) new ResizeObserver(() => { if (first) first = false; else scheduleLayout(); }).observe(homeEl);
   addEventListener('resize', scheduleLayout);
-  setTimeout(() => { loadMode(isLight ? 'dark' : 'light'); loadRoomPhoto(); }, 500);   // the other mode and the room photo, quietly, once the page is up
+  setTimeout(loadRoomPhoto, 500);   // the room photo, quietly, once the page is up
+}
+/* ===== Shimmer: a living screen. A tiny overlay (96 px wide, stretched by CSS) holds three slow things: a faint breathing, an occasional soft glint that sweeps across, and a dim band rolling down like a screen seen through a camera. The reflection samples the same overlay, so the floor answers the screen. One loop at ~15 fps; no pixel is ever read back ===== */
+const SHIM = { base: .012, sweep: .10, roll: .035, breath: .035, sweepMs: 15000, rollMs: 6500 };   // strengths (alpha of white) and periods; CONFIG.shimmer scales them all
+const shimCanvas = document.createElement('canvas'), shimCtx = shimCanvas.getContext('2d'); shimCanvas.className = 'shimmer'; shimCanvas.setAttribute('aria-hidden', 'true'); homeEl.appendChild(shimCanvas);
+function shimPlace() {   // overlay sits exactly on the picture
+  const w = cv.offsetWidth, h = cv.offsetHeight; if (!w || !h) return;
+  shimCanvas.style.left = cv.offsetLeft + 'px'; shimCanvas.style.top = cv.offsetTop + 'px'; shimCanvas.style.width = w + 'px'; shimCanvas.style.height = h + 'px';
+  const sw = 96, sh = Math.max(8, Math.round(sw * h / w)); if (shimCanvas.width !== sw || shimCanvas.height !== sh) { shimCanvas.width = sw; shimCanvas.height = sh; }
+}
+function shimDraw(t) {   // returns the breathing value (-1..1)
+  const w = shimCanvas.width, h = shimCanvas.height, c = shimCtx, s = CONFIG.shimmer * (isLight ? .6 : 1), TAU = Math.PI * 2;
+  const b = Math.sin(t / 4100 * TAU) * .6 + Math.sin(t / 2700 * TAU + 1.3) * .4;   // two slow, unrelated waves: never a visible loop
+  c.clearRect(0, 0, w, h); if (!w || s <= 0) return b;
+  c.fillStyle = `rgba(255,255,255,${(SHIM.base * s * (1 + .6 * b)).toFixed(4)})`; c.fillRect(0, 0, w, h);
+  const ph = (t % SHIM.sweepMs) / SHIM.sweepMs;
+  if (ph < .45) {   // glint: a soft diagonal band crosses once, then the screen rests
+    const q = ph / .45, px = (-.3 + 1.6 * q) * w, hw = .24 * w, g = c.createLinearGradient(px - .94 * hw, h / 2 - .34 * hw, px + .94 * hw, h / 2 + .34 * hw), a = SHIM.sweep * s * Math.sin(Math.PI * q);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, `rgba(255,255,255,${a.toFixed(4)})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+  }
+  const y = ((t % SHIM.rollMs) / SHIM.rollMs * 1.5 - .25) * h, bh = .3 * h, g2 = c.createLinearGradient(0, y - bh, 0, y + bh);   // rolling band
+  g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(.5, `rgba(255,255,255,${(SHIM.roll * s).toFixed(4)})`); g2.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = g2; c.fillRect(0, 0, w, h);
+  return b;
+}
+let fxLast = 0;
+function fxTick(now) {   // the one loop: overlay, skirt breathing, reflection (also during dissolves)
+  requestAnimationFrame(fxTick);
+  if (now - fxLast < 66) return; fxLast = now;
+  if (!slideList.length || !homeVisible || document.hidden || themeBusy || !W) return;
+  const b = shimDraw(now);
+  skirtGroup.style.opacity = (skirtOp(fxK) * (1 + SHIM.breath * CONFIG.shimmer * b)).toFixed(3);
+  updateReflection(homeEl.getBoundingClientRect(), imgBox());
+}
+/* ===== Slideshow: the pictures dissolve into each other. Everything on the floor (reflection, skirt, halo) is rebuilt from the same blended frame ===== */
+let slidesLoad = null, slideTimer = 0, slideBusy = false;
+function loadSlides() {
+  return slidesLoad || (slidesLoad = Promise.all(CONFIG.slides.files.map(f => new Promise(res => {
+    const im = new Image(), src = `${CONFIG.slides.dir}${f}?v=${CONFIG.v}`;
+    const done = () => {
+      if (!im.naturalWidth) { console.warn('Could not decode ' + src); res(null); return; }
+      let a = {}; try { a = analyze(im); } catch (e) {}   // glow colour and brightness, read once per picture, never per frame
+      res({ im, rgb: a.rgb || null, k: a.k ?? .5 });
+    };
+    im.onload = () => (im.decode ? im.decode().then(done, done) : done());
+    im.onerror = () => { console.warn('Could not load ' + src); res(null); };
+    im.src = src;
+  }))).then(a => { slideList.push(...a.filter(Boolean)); return slideList; }));
+}
+function drawCover(im, alpha) {
+  const k = Math.max(W / im.naturalWidth, H / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k;
+  ctx.globalAlpha = alpha; ctx.drawImage(im, (W - w) * CONFIG.focus[0], (H - h) * CONFIG.focus[1], w, h); ctx.globalAlpha = 1;
+}
+function slideSchedule() { clearTimeout(slideTimer); if (slideList.length > 1) slideTimer = setTimeout(slideNext, CONFIG.slides.hold); }
+function slideNext() {
+  if (slideBusy || !homeVisible || document.hidden || themeBusy) { slideSchedule(); return; }   // not while a section is open, the tab is hidden or the lights are switching
+  const from = slideList[slideIdx], toIdx = (slideIdx + 1) % slideList.length, to = slideList[toIdx];
+  if (reduceQ.matches || !W) { slideIdx = toIdx; showMode(); slideSchedule(); return; }
+  slideBusy = true;
+  const root = document.documentElement, a = (from.rgb || '').split(',').map(Number), b = (to.rgb || '').split(',').map(Number), t0 = performance.now();
+  const tick = now => {
+    const u = Math.min(1, (now - t0) / CONFIG.slides.fade), e = u * u * (3 - 2 * u), k = from.k + (to.k - from.k) * e;
+    ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H); drawCover(from.im, 1); drawCover(to.im, e);   // the picture itself: every frame
+    if (a.length === 3 && b.length === 3) root.style.setProperty('--ambilight-rgb', a.map((v, i) => Math.round(v + (b[i] - v) * e)).join(', '));
+    root.style.setProperty('--halo-k', k.toFixed(3));
+    fxK = k;
+    if (u < 1) requestAnimationFrame(tick); else { slideIdx = toIdx; showMode(); slideBusy = false; slideSchedule(); }
+  };
+  requestAnimationFrame(tick);
 }
 async function boot() {
   requestAnimationFrame(pulseTick);
@@ -1006,7 +1066,7 @@ async function boot() {
     document.documentElement.style.setProperty('--floor-light', CONFIG.darkFloorLight); document.documentElement.style.setProperty('--floor-blur', CONFIG.darkFloorBlur + 'px'); document.documentElement.style.setProperty('--floor-contrast', CONFIG.darkFloorContrast);
     roomPhotoEl.style.visibility = 'hidden'; floorPhotoEl.style.visibility = 'hidden';
     applyTheme();
-    await Promise.all([wait(loadMode('light'), 90000), wait(loadMode('dark'), 90000), wait(loadRoomPhoto(), 8000), wait(document.fonts ? document.fonts.ready : null, 3000)]);   // both pictures and the room photo, so the light button always works
+    await Promise.all([wait(loadSlides(), 90000), wait(loadRoomPhoto(), 8000), wait(document.fonts ? document.fonts.ready : null, 3000)]);
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
     showMode();
     menuMeasure(true); menuDraw(0);          // the image box is known now: row or column?
@@ -1014,6 +1074,8 @@ async function boot() {
   } catch (e) { console.error(e); dbg('boot failed: ' + e); }
   dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
   reveal();
+  slideSchedule();
+  if (!reduceQ.matches) requestAnimationFrame(fxTick);
 }
 boot();
 </script>
