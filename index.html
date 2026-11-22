@@ -1023,18 +1023,88 @@ function fxTick(now) {   // the one loop: overlay, skirt breathing, reflection (
   skirtGroup.style.opacity = (skirtOp(fxK) * (1 + SHIM.breath * CONFIG.shimmer * b)).toFixed(3);
   updateReflection(homeEl.getBoundingClientRect(), imgBox());
 }
+/* ===== Dissolve: the grain-gradient dissolve of the earlier auto loop, run by the GPU. Every pixel has its own moment to change: edges first, working inward to the centre, with a fine grain whose density follows that gradient. Full resolution, no flash, no blend modes. Falls back to a plain crossfade if WebGL is missing ===== */
+const DISSOLVE = { edge: .62, grain: .38, soft: .24 };   // edge: how strongly the edges-inward gradient leads | grain: how much each pixel's own random timing counts | soft: how gently each pixel fades (higher = softer, less visible grain)
+let glc = null, gl = null, glProg = null, glNoise = null, glU = {}, glDead = false;
+function glInit() {
+  if (glDead) return false; if (gl) return true;
+  try {
+    glc = document.createElement('canvas');
+    gl = glc.getContext('webgl', { antialias: false, alpha: false, preserveDrawingBuffer: false });
+    if (!gl) throw 0;
+    glc.addEventListener('webglcontextlost', e => { e.preventDefault(); glDead = true; gl = null; });
+    const sh = (type, src) => { const o = gl.createShader(type); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    glProg = gl.createProgram();
+    gl.attachShader(glProg, sh(gl.VERTEX_SHADER, 'attribute vec2 p; varying vec2 uv; void main(){ uv = p * .5 + .5; gl_Position = vec4(p, 0., 1.); }'));
+    gl.attachShader(glProg, sh(gl.FRAGMENT_SHADER, `
+      #ifdef GL_FRAGMENT_PRECISION_HIGH
+      precision highp float;
+      #else
+      precision mediump float;
+      #endif
+      varying vec2 uv; uniform sampler2D a, b, n; uniform vec4 ra, rb; uniform vec3 prm; uniform float t;
+      void main(){
+        vec2 q = vec2(uv.x, 1. - uv.y);
+        vec3 ca = texture2D(a, ra.xy + q * ra.zw).rgb, cb = texture2D(b, rb.xy + q * rb.zw).rgb;
+        vec2 e = abs(uv * 2. - 1.);
+        float th = (1. - max(e.x, e.y)) * prm.x + texture2D(n, gl_FragCoord.xy / 256.).r * prm.y;   // edges first, jittered by grain
+        float m = clamp((t * (prm.x + prm.y + prm.z) - th) / prm.z, 0., 1.);
+        gl_FragColor = vec4(mix(ca, cb, m * m * (3. - 2. * m)), 1.);
+      }`));
+    gl.linkProgram(glProg); if (!gl.getProgramParameter(glProg, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(glProg));
+    gl.useProgram(glProg);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(glProg, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    for (const k of ['a', 'b', 'n', 'ra', 'rb', 'prm', 't']) glU[k] = gl.getUniformLocation(glProg, k);
+    gl.uniform1i(glU.a, 0); gl.uniform1i(glU.b, 1); gl.uniform1i(glU.n, 2);
+    const noise = new Uint8Array(256 * 256); for (let i = 0; i < noise.length; i++) noise[i] = Math.random() * 255;   // one tile of white noise, repeated: never read back
+    glNoise = gl.createTexture(); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, glNoise);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, 256, 256, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, noise);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+    return true;
+  } catch (e) { console.warn('WebGL dissolve unavailable, using a crossfade', e); glDead = true; gl = null; return false; }
+}
+function glTex(s) {   // each picture goes to the GPU once (longest side capped at 2048)
+  if (s.tex) return s.tex;
+  const im = s.im, k = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight)); let src = im;
+  if (k < 1) { src = document.createElement('canvas'); src.width = Math.round(im.naturalWidth * k); src.height = Math.round(im.naturalHeight * k); src.getContext('2d').drawImage(im, 0, 0, src.width, src.height); }
+  const t = gl.createTexture(); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, src);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return (s.tex = t);
+}
+function coverRect(im) {   // the same cover-fit as drawCover, as a texture window
+  const k = Math.max(W / im.naturalWidth, H / im.naturalHeight), w = W / k, h = H / k;
+  return [(im.naturalWidth - w) * CONFIG.focus[0] / im.naturalWidth, (im.naturalHeight - h) * CONFIG.focus[1] / im.naturalHeight, w / im.naturalWidth, h / im.naturalHeight];
+}
+function glDissolve(from, to, t) {   // draws one dissolve frame into the picture canvas; false = use the plain crossfade
+  if (!glInit()) return false;
+  try {
+    if (glc.width !== W || glc.height !== H) { glc.width = W; glc.height = H; }
+    gl.viewport(0, 0, W, H);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, glTex(from)); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, glTex(to));
+    gl.uniform4fv(glU.ra, coverRect(from.im)); gl.uniform4fv(glU.rb, coverRect(to.im));
+    gl.uniform3f(glU.prm, DISSOLVE.edge, DISSOLVE.grain, DISSOLVE.soft); gl.uniform1f(glU.t, t);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    ctx.drawImage(glc, 0, 0, W, H);   // same task as the draw: the picture canvas stays the single source for reflection and skirt
+    return true;
+  } catch (e) { console.warn('dissolve frame failed', e); glDead = true; return false; }
+}
 /* ===== Slideshow: the pictures dissolve into each other. Everything on the floor (reflection, skirt, halo) is rebuilt from the same blended frame ===== */
 let slidesLoad = null, slideTimer = 0, slideBusy = false;
 function loadSlides() {
   return slidesLoad || (slidesLoad = Promise.all(CONFIG.slides.files.map(f => new Promise(res => {
     const im = new Image(), src = `${CONFIG.slides.dir}${f}?v=${CONFIG.v}`;
     const done = () => {
-      if (!im.naturalWidth) { console.warn('Could not decode ' + src); res(null); return; }
+      if (!im.naturalWidth) { console.warn('Could not decode ' + src); dbg(`slide ${src}: could not decode`); res(null); return; }
+      dbg(`slide ${src}: ${im.naturalWidth}x${im.naturalHeight}`);
       let a = {}; try { a = analyze(im); } catch (e) {}   // glow colour and brightness, read once per picture, never per frame
       res({ im, rgb: a.rgb || null, k: a.k ?? .5 });
     };
     im.onload = () => (im.decode ? im.decode().then(done, done) : done());
-    im.onerror = () => { console.warn('Could not load ' + src); res(null); };
+    im.onerror = () => { console.warn('Could not load ' + src); dbg(`slide ${src}: FAILED to load (missing file or wrong name?)`); res(null); };
     im.src = src;
   }))).then(a => { slideList.push(...a.filter(Boolean)); return slideList; }));
 }
@@ -1051,7 +1121,7 @@ function slideNext() {
   const root = document.documentElement, a = (from.rgb || '').split(',').map(Number), b = (to.rgb || '').split(',').map(Number), t0 = performance.now();
   const tick = now => {
     const u = Math.min(1, (now - t0) / CONFIG.slides.fade), e = u * u * (3 - 2 * u), k = from.k + (to.k - from.k) * e;
-    ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H); drawCover(from.im, 1); drawCover(to.im, e);   // the picture itself: every frame
+    if (!glDissolve(from, to, e)) { ctx.imageSmoothingQuality = 'high'; ctx.clearRect(0, 0, W, H); drawCover(from.im, 1); drawCover(to.im, e); }   // the picture itself: every frame
     if (a.length === 3 && b.length === 3) root.style.setProperty('--ambilight-rgb', a.map((v, i) => Math.round(v + (b[i] - v) * e)).join(', '));
     root.style.setProperty('--halo-k', k.toFixed(3));
     fxK = k;
@@ -1073,6 +1143,7 @@ async function boot() {
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // let the first full frame paint under the loading screen
   } catch (e) { console.error(e); dbg('boot failed: ' + e); }
   dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
+  if (slideList.length > 1 && !reduceQ.matches && glInit()) slideList.forEach(sl => { try { glTex(sl); } catch (e) {} });   // pictures on the GPU before the first dissolve
   reveal();
   slideSchedule();
   if (!reduceQ.matches) requestAnimationFrame(fxTick);
