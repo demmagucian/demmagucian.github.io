@@ -100,7 +100,9 @@
   html[data-theme="light"] .floorphoto { display: none; }
   html[data-theme="light"] .grain { opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
   .contact { position: absolute; z-index: 2; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, .24) 0%, rgba(0, 0, 0, .13) 18%, rgba(0, 0, 0, .045) 48%, rgba(0, 0, 0, 0) 100%); }   /* soft contact shadow: strongest at the artwork's foot, fading into the reflection */
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, .10) 14%, rgba(0, 0, 0, .22) 30%, rgba(0, 0, 0, .13) 50%, rgba(0, 0, 0, .05) 75%, rgba(0, 0, 0, 0) 100%); }   /* soft contact shadow: a band that starts 4px inside the artwork's foot, peaks at the foot and fades into the reflection. The seam is no longer a hard 1px line, so it cannot flicker when the camera carries it across pixels */
+  .contact::after { content: ""; position: absolute; inset: 0; opacity: .5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 160px 160px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 28%, #000 45%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, #000 28%, #000 45%, transparent 100%); }   /* fine static grain in the shadow: breaks up the line so it has nothing to shimmer against */
   #c { position: relative; z-index: 1; background: #000; transform-origin: 50% 100%;   /* the press-zoom grows upward from the bottom edge: the image can never sink onto the reflection */     /* image always on top of the halo and fully opaque */
     box-shadow: var(--img-halo);
     clip-path: inset(-40px -40px 0 -40px); }   /* halo on top and sides only; nothing spills below the bottom edge, so the gap to the reflection stays clean */
@@ -228,7 +230,8 @@
   html[data-theme="light"] .fgrp { mix-blend-mode: normal; }   /* plain alpha instead of multiply: looks the same in every browser (Safari rendered multiply as a pale fog) */
   html[data-theme="light"] .fgrp.refl-g { opacity: .9; }
   html[data-theme="light"] .fgrp.skirt-g { opacity: .35; }
-  html[data-theme="light"] .contact { background: linear-gradient(to bottom, rgba(34, 27, 21, .22) 0%, rgba(34, 27, 21, .12) 18%, rgba(34, 27, 21, .04) 48%, rgba(34, 27, 21, 0) 100%); }
+  html[data-theme="light"] .contact { background: linear-gradient(to bottom, rgba(34, 27, 21, 0) 0%, rgba(34, 27, 21, .09) 14%, rgba(34, 27, 21, .20) 30%, rgba(34, 27, 21, .11) 50%, rgba(34, 27, 21, .04) 75%, rgba(34, 27, 21, 0) 100%); }
+  html[data-theme="light"] .contact::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .13 0 0 0 0 .11 0 0 0 0 .08 0 0 0 .9 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
   /* ===== Loading screen: covers the page until fonts, the image and the room photo are ready, then dissolves into it ===== */
   #loader { position: fixed; inset: 0; z-index: 5;   /* under the header and footer (z-index 10): the name, menu and icons are there while the picture loads */
@@ -327,8 +330,8 @@ const CONFIG = {
   /* The camera: you are standing in the room, looking at it. The WHOLE scene (wall, floor, reflection, grain, image) is seen through a living first-person camera; the name, menu and icons are not part of the room and stay still.
      Built the way game engines do handheld / first-person cameras: smooth coherent noise (several octaves, the slow ones strongest) on each axis, plus an uneven breathing cycle. No sine waves, so it never repeats and never reads as a shake. */
   camera: { on: true,
-            strength: 1,        // overall amount (like Cinemachine's amplitude gain): 0 = still, 1 = default, 2 = twice as much
-            speed: 1,           // how fast everything wanders (like frequency gain): .5 = half as fast
+            strength: .5,       // overall amount (like Cinemachine's amplitude gain): 0 = still, .5 = default, 1 = twice the default
+            speed: .5,          // how fast everything wanders (like frequency gain): .5 = default, 1 = twice as fast
             x: .0120, y: .0085, // sideways / up-down wander, as a fraction of the page width / height (each axis has its own noise)
             zoom: .0085,        // body leaning forward and back (extra zoom, never less than the resting one)
             roll: .15,          // head tilt in degrees
@@ -500,8 +503,8 @@ function updateReflection(sr, ir, src = cv) {
   const padPx = Math.round(ir.width * REFL_PAD), W = ir.width + 2 * padPx;                       // whole-pixel box, symmetric around the image: no half-pixel edges that can shift against it
   const dpr = window.devicePixelRatio || 1, hide = -(REFL_SPACING > 0 ? Math.max(1, Math.round(REFL_SPACING * dpr)) / dpr : 0);   // negative = the reflection starts this many px BELOW the foot of the image   // was Math.ceil(W / REFL_W): the reflection was pushed up UNDER the image, so the image covered its first rows and the mirror was shifted; it now starts exactly at the foot of the image   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
   const rl = Math.round(ir.left - sr.left) - padPx, rt = Math.round(ir.bottom - sr.top) - hide;
-  const ch = 5;      // soft contact shadow: fixed 5px extension below the artwork
-  contactEl.style.display = 'block'; contactEl.style.left = Math.round(ir.left - sr.left) + 'px'; contactEl.style.top = (Math.round(ir.bottom - sr.top) - 1) + 'px';
+  const ch = 14, chUp = 4;      // soft contact shadow band: 14px tall, starting 4px above the artwork's foot so it covers the seam
+  contactEl.style.display = 'block'; contactEl.style.left = Math.round(ir.left - sr.left) + 'px'; contactEl.style.top = (Math.round(ir.bottom - sr.top) - chUp) + 'px';
   contactEl.style.width = ir.width + 'px'; contactEl.style.height = ch + 'px';
   reflCanvas.style.display = 'block';
   reflCanvas.style.left = rl + 'px';
