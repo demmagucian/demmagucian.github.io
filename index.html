@@ -39,7 +39,7 @@
     font-family: "Helvetica Neue", Helvetica, "Arimo", Arial, sans-serif;   /* Apple devices use Helvetica Neue; Android has neither, so it gets Arimo (same shapes and widths as Helvetica/Arial) */
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   .stage { position: fixed; z-index: 1; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: #000; touch-action: none; overscroll-behavior: none; transition: opacity .9s ease; }
+    background: #000; touch-action: none; overscroll-behavior: none; transition: opacity .9s ease; will-change: transform; }
   canvas { display: block; height: auto; background: transparent; touch-action: none; outline: none;
     box-shadow: none; }
   .stage canvas.reflection { position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none;
@@ -323,7 +323,18 @@ const CONFIG = {
   darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
   darkFloorContrast: 1.6,                                               // dark floor: higher = only the texture and the cable catch the light, flat areas stay dark (less haze)
   darkFloorBlur: 0,                                                   // px of blur on the floor photo: lower = the cable is sharper
-  darkRoomDepth: .06                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
+  darkRoomDepth: .06,                                                   // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
+  /* The camera: you are standing in the room, looking at it. The WHOLE scene (wall, floor, reflection, grain, image) is seen through a living first-person camera; the name, menu and icons are not part of the room and stay still.
+     Built the way game engines do handheld / first-person cameras: smooth coherent noise (several octaves, the slow ones strongest) on each axis, plus an uneven breathing cycle. No sine waves, so it never repeats and never reads as a shake. */
+  camera: { on: true,
+            strength: 1,        // overall amount (like Cinemachine's amplitude gain): 0 = still, 1 = default, 2 = twice as much
+            speed: 1,           // how fast everything wanders (like frequency gain): .5 = half as fast
+            x: .0120, y: .0085, // sideways / up-down wander, as a fraction of the page width / height (each axis has its own noise)
+            zoom: .0085,        // body leaning forward and back (extra zoom, never less than the resting one)
+            roll: .15,          // head tilt in degrees
+            period: 9000,       // ms the slowest wander takes to change direction: the faster octaves ride on top of it, smaller
+            breath: { period: 4300, y: .0034, zoom: .0036 }   // chest: quick inhale, slow exhale, a short rest, never twice the same
+          }
 };
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -365,6 +376,7 @@ function reflBlurXY(dst, src, w, h, kx, ky) {
 const skirtCanvas = document.createElement('canvas'); skirtCanvas.className = 'reflection'; skirtCanvas.setAttribute('aria-hidden', 'true');
 /* Layers live in two blend groups (skirt, reflection); each canvas has a twin that holds the previous picture and fades out while the new one appears */
 const homeEl = document.getElementById('home');
+const stageRect = () => ({ left: 0, top: 0, width: homeEl.clientWidth, height: homeEl.clientHeight });   // the stage box WITHOUT the camera transform (getBoundingClientRect would include it and move the reflection)
 const mkGroup = cls => { const g = document.createElement('div'); g.className = 'fgrp ' + cls; g.setAttribute('aria-hidden', 'true'); return g; };
 const skirtGroup = mkGroup('skirt-g'), reflGroup = mkGroup('refl-g');
 homeEl.insertBefore(skirtGroup, reflCanvas); homeEl.insertBefore(reflGroup, reflCanvas);
@@ -384,7 +396,7 @@ homeEl.insertBefore(floorPhotoEl, roomPhotoEl.nextSibling);
 const grainEl = document.createElement('div'); grainEl.className = 'grain'; grainEl.setAttribute('aria-hidden', 'true'); homeEl.appendChild(grainEl);
 /* The image box WITHOUT the press-zoom transform (getBoundingClientRect includes it, which made the reflection jump, re-key and sit under the image) */
 function imgBox() {
-  const s = homeEl.getBoundingClientRect(), l = s.left + cv.offsetLeft, t = s.top + cv.offsetTop, w = cv.offsetWidth, h = cv.offsetHeight;
+  const s = stageRect(), l = s.left + cv.offsetLeft, t = s.top + cv.offsetTop, w = cv.offsetWidth, h = cv.offsetHeight;
   return { left: l, top: t, width: w, height: h, right: l + w, bottom: t + h };
 }
 const skirtCtx = skirtCanvas.getContext('2d'), skTiny = mk(), skTinyCtx = skTiny.getContext('2d', { willReadFrequently: true });   // read back every frame by the skirt: keep it on the CPU
@@ -631,7 +643,7 @@ function paint() {
   if (!ok) { ctx.fillStyle = isLight ? '#d8d3cb' : '#0b0b0e'; ctx.fillRect(0, 0, W, H); }   // no picture: a plain panel, so the room, halo and reflection still line up
 }
 function layoutRoom() {   // the room photo and the wall/floor line follow the image box
-  const sr = homeEl.getBoundingClientRect();
+  const sr = stageRect();
   if (!cv.width || !sr.width || !sr.height) return;
   const ir = imgBox(), R = ROOM_PHOTO, k = R.inset, sx = Math.max(1, ir.width - 2 * k) / R.pw, sy = Math.max(1, ir.height - 2 * k) / R.ph;   // the photo's lightbox is stretched to sit just inside the artwork, so the artwork hides it exactly
   roomPhotoEl.style.backgroundSize = floorPhotoEl.style.backgroundSize = `${(R.w * sx).toFixed(2)}px ${(R.h * sy).toFixed(2)}px`;
@@ -642,7 +654,7 @@ function layoutRoom() {   // the room photo and the wall/floor line follow the i
   roomPhotoEl.style.visibility = floorPhotoEl.style.visibility = '';   // shown only once it is placed (before that its white lightbox would show at full size)
 }
 function layoutFX() {     // room, reflection, skirt: redone only when the box, the picture or the mode changed
-  const sr = homeEl.getBoundingClientRect();
+  const sr = stageRect();
   if (!cv.width || !sr.width || !sr.height) return;
   layoutRoom();
   updateReflection(sr, imgBox());
@@ -892,7 +904,7 @@ function menuMeasure(skip) {
   const left = sw - pr - (menuBtn.offsetWidth + mGap + rowW);            // left end of "- items" once open
   const nm = document.querySelector('.site-name').getBoundingClientRect(), g = nm.top;
   const nmx = nameMetrics(), dgRight = nm.left + (document.querySelector('.site-name').classList.contains('stacked') ? Math.max(...nmx.base) : nmx.base[0] + nmx.base[1]);   // the name is "DG" while the menu is open
-  const row = document.getElementById('menu').getBoundingClientRect(), c = cv.getBoundingClientRect();
+  const row = document.getElementById('menu').getBoundingClientRect(), c = imgBox();
   mVertical = left < dgRight + g || (c.width > 0 && c.right + g > left && c.top < row.bottom + g);
   navEl.classList.toggle('vertical', mVertical);
   mDist = mVertical ? mGap : rowW + mGap;                  // how far the page travels (vertical: it does not travel, it turns in place)
@@ -1038,13 +1050,13 @@ const copyCanvas = c => { const o = document.createElement('canvas'); o.width = 
 function fxRestore() { if (dz) fxMix(dz.fA, dz.fB, dz.e); else if (fxSnap[slideIdx]) fxMix(fxSnap[slideIdx], fxSnap[slideIdx], 0); }   // same task as the rebuild: no frame ever shows a half-built floor
 function buildFX() {   // every picture's floor, once, from its thumbnail: the visible canvas is never touched
   if (!W || !slideList.length) return;
-  const sr = homeEl.getBoundingClientRect(), ir = imgBox(); fxSnap = [];
+  const sr = stageRect(), ir = imgBox(); fxSnap = [];
   for (const sl of slideList) { updateReflection(sr, ir, sl.thumb); fxSnap.push({ r: copyCanvas(reflCanvas), k: copyCanvas(skirtCanvas) }); }
   fxKeyAt = fxKey(); fxRestore();
 }
 function refreshSkirts() {   // lights switched: only the skirt depends on them (dark floors follow the picture's brightness), so only it is rebuilt
   if (!fxSnap.length || !W) return;
-  const sr = homeEl.getBoundingClientRect(), ir = imgBox(), h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));
+  const sr = stageRect(), ir = imgBox(), h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));
   slideList.forEach((sl, i) => { updateSkirt(sr, ir, h, sl.thumb); fxSnap[i].k = copyCanvas(skirtCanvas); }); fxRestore();
 }
 function fxMix(a, b, e) {
@@ -1121,7 +1133,47 @@ async function boot() {
   dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
   reveal();
   slideSchedule();
+  startCamera();
 }
+/* ===== The camera. Pure maths in camPose(); one transform on the stage per frame (compositor only: nothing is redrawn). ===== */
+const CAM = CONFIG.camera;
+const camPerm = new Uint8Array(512);
+(() => { const a = Array.from({ length: 256 }, (_, i) => i); for (let i = 255; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } for (let i = 0; i < 512; i++) camPerm[i] = a[i & 255]; })();   // new random room every visit
+const camNoise = x => {   // 1-D gradient (Perlin) noise, smooth, roughly -1..1
+  const xi = Math.floor(x), f = x - xi, X = xi & 255, u = f * f * f * (f * (f * 6 - 15) + 10);
+  const a = (camPerm[X] / 127.5 - 1) * f, b = (camPerm[X + 1] / 127.5 - 1) * (f - 1);
+  return Math.max(-1, Math.min(1, 2 * (a + u * (b - a))));
+};
+const camFbm = x => Math.tanh(2.2 * (camNoise(x) + .5 * camNoise(x * 2.03 + 17.3) + .25 * camNoise(x * 4.1 + 41.7)) / 1.75);   // three octaves: the slow wander dominates, finer movement rides on it. The gain + tanh use the whole range (plain noise rarely leaves the middle third) and can never pass 1, so the no-edge guarantee holds
+const camSeed = [0, 1, 2, 3, 4, 5].map(() => Math.random() * 1000);
+const camEase = t => t * t * (3 - 2 * t);
+let camPhase = Math.random(), camLast = 0, camT0 = 0;
+function camPose(now, dt, ramp) {   // returns { x, y (px), r (deg), s }
+  const k = CAM.strength * ramp, B = CAM.breath, T = now * CAM.speed / CAM.period;
+  const W = homeEl.clientWidth, H = homeEl.clientHeight;
+  camPhase = (camPhase + dt * CAM.speed / B.period * (1 + .14 * camNoise(now / 11000 + camSeed[4]))) % 1;   // the rate drifts: no two breaths alike
+  const p = camPhase, b = p < .40 ? camEase(p / .40) : p < .92 ? 1 - camEase((p - .40) / .52) : 0;            // inhale .40 of the cycle, exhale .52, rest .08
+  const depth = .8 + .35 * (.5 + .5 * camNoise(now / 7000 + camSeed[5]));                                      // some breaths deeper than others
+  const fx = CAM.x * k * camFbm(T + camSeed[0]);
+  const fy = CAM.y * k * camFbm(T * 1.13 + camSeed[1]) - B.y * k * (b - .5) * depth;
+  const roll = CAM.roll * k * camFbm(T * .81 + camSeed[2]);
+  const lean = CAM.zoom * k * (.5 + .5 * camFbm(T * .9 + camSeed[3])) + B.zoom * k * b * depth;
+  // resting zoom: the least that keeps the picture covering the whole page in every pose, so no edge can ever show
+  const asp = W / H, rollNeed = Math.sin(Math.abs(CAM.roll) * k * Math.PI / 180) * Math.max(asp, 1 / asp);
+  const rest = 1 + 2 * Math.max(CAM.x * k, CAM.y * k + .575 * B.y * k) + rollNeed + .002 * Math.min(1, k);
+  return { x: fx * W, y: fy * H, r: roll, s: rest + lean };
+}
+function camFrame(now) {
+  requestAnimationFrame(camFrame);
+  if (!CAM.on || reduceQ.matches) { if (homeEl.style.transform) homeEl.style.transform = ''; return; }
+  const dt = Math.min(50, now - (camLast || now)); camLast = now;
+  if (!camT0) camT0 = now;
+  const ramp = camEase(Math.min(1, (now - camT0) / 5000));   // eases in over 5 s after the page appears: no sudden start
+  const c = camPose(now, dt, ramp);
+  if (!homeVisible || document.hidden) return;                // sections open: the room is faded out, nothing to move
+  homeEl.style.transform = `translate3d(${c.x.toFixed(2)}px, ${c.y.toFixed(2)}px, 0) rotate(${c.r.toFixed(4)}deg) scale(${c.s.toFixed(5)})`;
+}
+function startCamera() { requestAnimationFrame(camFrame); }
 boot();
 </script>
 </body>
