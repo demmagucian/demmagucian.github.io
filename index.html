@@ -927,7 +927,7 @@ let pulseT0 = 0;   // the breathing is at its brightest at this moment (it is mo
 let pulseLast = 0;
 /* Perceptual drift: slow, non-repeating target changes rather than a sinusoidal camera loop.
    It rides the existing idle pulse clock (no additional RAF/timer), and is frozen during slides. */
-const VIEW_PERCEPTION = 3; // Overall intensity multiplier for the room's perceptual movement.
+const VIEW_PERCEPTION = 15; // Overall intensity multiplier for the room's perceptual movement.
 const VIEW_DRIFT = { x: .36, y: .30, scale: .00055, minDuration: 6200, maxDuration: 10400, minPause: 450, maxPause: 1500 };
 const viewDrift = { x: 0, y: 0, scale: 1.0038, fromX: 0, fromY: 0, fromScale: 1.0038,
   toX: 0, toY: 0, toScale: 1.0038, start: 0, duration: 0, next: 0 };
