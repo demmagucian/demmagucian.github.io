@@ -313,7 +313,8 @@ const CONFIG = {
   slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'],   // ONE set of pictures for both modes, in the folder next to index.html (same proportions)
             fade: 5000, hold: 0, fps: 60, order: 'sequence', style: 'blend', blendMode: 'multiply', blendAmount: .7, blendIntensity: .5,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
             // As in the autoloop, a NEW random value is drawn for each of these at the start of every dissolve. [min, max] = a number between the two, [..., ...] of words = one random pick. Delete a line to keep that value fixed; random: null = no randomness at all
-            random: { hold: [0, 1515], order: ['sequence', 'shuffle'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-dodge', 'color-burn', 'luminosity'], blendAmount: [.4, 1] } },
+            random: { hold: [0, 1515], order: ['sequence', 'shuffle'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-dodge', 'color-burn', 'luminosity'], blendAmount: [.4, 1] },
+            modeStrength: { 'color-dodge': .5, 'color-burn': .5, 'hard-light': .5 } },   // extra strength per blend mode, on top of blendIntensity (1 = as is, .5 = half). Modes not listed use 1
   haloFollowsImage: false,                                              // false = the glow around the artwork keeps one fixed colour and strength (much less repainting, smoother in dark mode). true = it follows the colour and brightness of each picture
   haloColor: '200, 190, 175',                                           // fixed glow colour (R, G, B) when haloFollowsImage is false
   haloStrength: .5,                                                     // fixed glow strength, 0 to 1, when haloFollowsImage is false
@@ -1065,7 +1066,7 @@ function drawDz() {   // one frame of the dissolve in flight: A, then B coming i
   const d = dz, SL = CONFIG.slides;
   if (d.cB.width !== W || d.cB.height !== H) { d.cA = fitCanvas(d.from.im); d.cB = fitCanvas(d.to.im); if (d.cC) d.cC = blendCanvas(d.cA, d.cB, d.mode); }   // window resized mid-dissolve
   ctx.drawImage(d.cA, 0, 0); ctx.globalAlpha = d.e; ctx.drawImage(d.cB, 0, 0);
-  if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1; }
+  if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity * ((SL.modeStrength && SL.modeStrength[d.mode]) ?? 1)); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1; }
 }
 function slideNext() {
   if (slideBusy || !homeVisible || document.hidden || themeBusy) { clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
