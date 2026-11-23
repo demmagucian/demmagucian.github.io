@@ -323,7 +323,16 @@ const CONFIG = {
   darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
   darkFloorContrast: 1.6,                                               // dark floor: higher = only the texture and the cable catch the light, flat areas stay dark (less haze)
   darkFloorBlur: 0,                                                   // px of blur on the floor photo: lower = the cable is sharper
-  darkRoomDepth: .06                                                    // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
+  darkRoomDepth: .06,                                                   // how much of the light room (background_light.jpg) shows in dark mode, 0 to 1. 0 = none
+  /* The eye: the room is never perfectly still. The picture moves INSIDE its frame (the frame, halo, name and icons stay put), like a person standing in front of it.
+     All amounts are fractions of the picture's width (horizontal) or height (vertical); periods are in ms. on: false = a still picture, exactly as before. */
+  eye: { on: true,
+         fps: 30,                                   // frame rate while no dissolve is running (during a dissolve it follows the dissolve). 30 is plenty for such slow motion and lighter on the iPad
+         breath: .010, breathPeriod: 6200,          // slow zoom in and out, like leaning in and back (extra zoom on top of the resting one)
+         sway:   { x: .0045, y: .0030, period: 15000 },   // slow drift of the head, left-right and up-down (the two axes run on different rhythms, so the path never repeats)
+         gaze:   { x: .0060, y: .0040, every: [3500, 9000], ease: 1100 },   // the glance: every few seconds a new spot is looked at, reached smoothly (ease = ms to settle: lower = quicker eye)
+         tremor: .0006,                             // the tiny constant shiver of a living eye (0 = none)
+         roll: .12, rollPeriod: 23000 }             // head tilt in degrees (0 = none)
 };
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
@@ -617,9 +626,51 @@ function size() {
   if (nw === W && nh === H && cv.width === W && cv.height === H) return;
   W = cv.width = nw; H = cv.height = nh;
 }
+/* ===== The eye: a virtual camera in front of the picture. Zoom, horizontal and vertical position and tilt are recomputed each frame from a few slow waves of different lengths
+   (so the path never repeats) plus a glance that wanders to a new spot every few seconds. Nothing in the page layout moves: only what the canvas shows. ===== */
+const EYE = CONFIG.eye, cam = { s: 1, x: 0, y: 0, r: 0, gx: 0, gy: 0, vx: 0, vy: 0, tx: 0, ty: 0, next: 0, t: 0 };
+const TAU = Math.PI * 2, wob = (T, per, ph) => .6 * Math.sin(TAU * T / per + ph) + .4 * Math.sin(TAU * T / (per * .618) + ph * 1.7);   // two waves, never louder than 1
+const eyeOn = () => EYE && EYE.on && !reduceQ.matches;
+function camUpdate(now) {
+  if (!eyeOn()) { cam.s = 1; cam.x = cam.y = cam.r = 0; return; }
+  if (!cam.t) cam.t = now - 16;
+  const dt = Math.min(.05, Math.max(0, (now - cam.t) / 1000)); cam.t = now;
+  const G = EYE.gaze;
+  if (now >= cam.next) { cam.tx = (Math.random() * 2 - 1) * G.x; cam.ty = (Math.random() * 2 - 1) * G.y; cam.next = now + G.every[0] + Math.random() * (G.every[1] - G.every[0]); }
+  const w = 3000 / G.ease;                                                       // critically damped spring: the glance glides to its target and stops, never overshooting
+  cam.vx += (w * w * (cam.tx - cam.gx) - 2 * w * cam.vx) * dt; cam.gx += cam.vx * dt;
+  cam.vy += (w * w * (cam.ty - cam.gy) - 2 * w * cam.vy) * dt; cam.gy += cam.vy * dt;
+  const T = now / 1000, Tm = now, SW = EYE.sway, tr = EYE.tremor;
+  const fx = cam.gx + SW.x * wob(Tm, SW.period, 0) + tr * (.5 * Math.sin(TAU * T * 1.3) + .5 * Math.sin(TAU * T * 2.9 + 1));
+  const fy = cam.gy + SW.y * wob(Tm, SW.period * 1.3, 2.1) + tr * (.5 * Math.sin(TAU * T * 1.7 + 2) + .5 * Math.sin(TAU * T * 3.3 + 4));
+  cam.x = fx * W; cam.y = fy * H;
+  cam.r = EYE.roll * Math.PI / 180 * wob(Tm, EYE.rollPeriod, 4);
+  const asp = W / H, maxF = Math.max(G.x + SW.x + tr, G.y + SW.y + tr), rollNeed = Math.sin(Math.abs(EYE.roll) * Math.PI / 180) * Math.max(asp, 1 / asp);
+  const rest = 1 + 2 * maxF + rollNeed + .002;                                    // the smallest zoom at which the picture still covers the whole frame in every pose: no edge ever shows
+  cam.s = rest + EYE.breath * (.5 + .5 * (.7 * Math.sin(TAU * Tm / EYE.breathPeriod) + .3 * Math.sin(TAU * Tm / (EYE.breathPeriod * 2.7) + 1)));
+}
+function camApply() {   // the canvas transform for the current pose: zoom and tilt around the middle, then shifted
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = 'high';
+  if (cam.s === 1 && !cam.x && !cam.y && !cam.r) return;
+  ctx.translate(W / 2 + cam.x, H / 2 + cam.y); ctx.rotate(cam.r); ctx.scale(cam.s, cam.s); ctx.translate(-W / 2, -H / 2);
+}
+function fitFor(sl) { return (fitCache && fitCache.s === sl && fitCache.c.width === W && fitCache.c.height === H) ? fitCache.c : (fitCache = { s: sl, c: fitCanvas(sl.im) }).c; }   // the cover-fitted copy, built once and stamped every frame
+function drawEye() {   // the still picture seen through the camera (one stamp)
+  const sl = slideList[slideIdx]; if (!sl) return;
+  camUpdate(performance.now());
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.clearRect(0, 0, W, H); camApply(); ctx.drawImage(fitFor(sl), 0, 0); ctx.restore();
+}
+let eyeLast = 0;
+function eyeLoop(now) {   // between dissolves (a dissolve draws its own frames through the same camera)
+  requestAnimationFrame(eyeLoop);
+  if (!eyeOn() || dz || !revealed || !W || !curImg || !homeVisible || document.hidden || themeBusy) return;
+  if (now - eyeLast < 1000 / EYE.fps - 3) return;
+  eyeLast = now; drawEye();
+}
 function paint() {
   if (!W) return;
   if (dz) { drawDz(); return; }
+  if (eyeOn() && curImg && slideList[slideIdx]) { try { drawEye(); return; } catch (e) { console.warn(e); dbg('eye failed: ' + e); } }
   let ok = false;
   if (curImg) {
     try {
@@ -645,7 +696,7 @@ function layoutFX() {     // room, reflection, skirt: redone only when the box, 
   const sr = homeEl.getBoundingClientRect();
   if (!cv.width || !sr.width || !sr.height) return;
   layoutRoom();
-  updateReflection(sr, imgBox());
+  updateReflection(sr, imgBox(), curInfo().thumb || cv);   // built from the still picture, never from a frame the camera has moved
   skirtGroup.style.opacity = skirtOp(fxK);   // fxK follows the picture on screen, also mid-dissolve
   if (dz) fxMix(dz.fA, dz.fB, dz.e);         // the floor stays on the dissolve's own mix   // dark floor: a dark artwork casts hardly any skirt; a bright one a strong skirt
 }
@@ -1065,8 +1116,11 @@ function slideSchedule() { clearTimeout(slideTimer); if (slideList.length > 1) s
 function drawDz() {   // one frame of the dissolve in flight: A, then B coming in, with the blend wash peaking in the middle
   const d = dz, SL = CONFIG.slides;
   if (d.cB.width !== W || d.cB.height !== H) { d.cA = fitCanvas(d.from.im); d.cB = fitCanvas(d.to.im); if (d.cC) d.cC = blendCanvas(d.cA, d.cB, d.mode); }   // window resized mid-dissolve
+  camUpdate(performance.now());
+  ctx.save(); camApply(); ctx.globalAlpha = 1;
   ctx.drawImage(d.cA, 0, 0); ctx.globalAlpha = d.e; ctx.drawImage(d.cB, 0, 0);
-  if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity * ((SL.modeStrength && SL.modeStrength[d.mode]) ?? 1)); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1; }
+  if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity * ((SL.modeStrength && SL.modeStrength[d.mode]) ?? 1)); ctx.drawImage(d.cC, 0, 0); }
+  ctx.restore();
 }
 function slideNext() {
   if (slideBusy || !homeVisible || document.hidden || themeBusy) { clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
@@ -1121,6 +1175,7 @@ async function boot() {
   dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
   reveal();
   slideSchedule();
+  requestAnimationFrame(eyeLoop);
 }
 boot();
 </script>
