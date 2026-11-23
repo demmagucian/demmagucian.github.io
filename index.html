@@ -311,9 +311,12 @@
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
   slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'],   // ONE set of pictures for both modes, in the folder next to index.html (same proportions)
-            fade: 3636, hold: 0, fps: 60, order: 'sequence', style: 'blend', blendMode: 'multiply', blendAmount: .7, blendIntensity: .5,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
+            fade: 5000, hold: 0, fps: 60, order: 'sequence', style: 'blend', blendMode: 'multiply', blendAmount: .7, blendIntensity: .5,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
             // As in the autoloop, a NEW random value is drawn for each of these at the start of every dissolve. [min, max] = a number between the two, [..., ...] of words = one random pick. Delete a line to keep that value fixed; random: null = no randomness at all
-            random: { fade: [4850, 6500], hold: [0, 1515], order: ['sequence', 'shuffle'], style: ['blend', 'crossfade'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'luminosity'], blendAmount: [.2, 1] } },
+            random: { hold: [0, 1515], order: ['sequence', 'shuffle'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-dodge', 'color-burn', 'luminosity'], blendAmount: [.4, 1] } },
+  haloFollowsImage: false,                                              // false = the glow around the artwork keeps one fixed colour and strength (much less repainting, smoother in dark mode). true = it follows the colour and brightness of each picture
+  haloColor: '200, 190, 175',                                           // fixed glow colour (R, G, B) when haloFollowsImage is false
+  haloStrength: .5,                                                     // fixed glow strength, 0 to 1, when haloFollowsImage is false
   v: 1,                                                                 // change this number when you upload new images: Safari keeps old copies
   focus: [.5, .5],                                                      // which part stays visible if an image is not exactly the proportions of the page
   darkFloorLight: .6,                                                  // dark mode: how much light the FLOOR gets from the room photo (this is what shows the cable), 0 to 1. The wall is not touched
@@ -649,6 +652,7 @@ function layoutImage() { setBox(); size(); paint(); layoutFX(); }
 function applyLook() {    // glow colour and halo strength of the active picture
   if (dz) return;         // mid-dissolve the dissolve itself eases them
   const i = curInfo(), root = document.documentElement; fxK = i.k ?? .5;
+  if (!CONFIG.haloFollowsImage) { root.style.setProperty('--ambilight-rgb', CONFIG.haloColor); root.style.setProperty('--halo-k', CONFIG.haloStrength.toFixed(3)); return; }
   if (i.rgb) root.style.setProperty('--ambilight-rgb', i.rgb);
   root.style.setProperty('--halo-k', (i.k ?? .5).toFixed(3));
 }
@@ -1086,7 +1090,7 @@ function slideNext() {
       lastFx = now; const k = from.k + (to.k - from.k) * e; fxK = k; fxMix(dz.fA, dz.fB, e);
       const op = skirtOp(k).toFixed(2); if (op !== lastOp) { lastOp = op; skirtGroup.style.opacity = op; }
       const st = Math.round(e * steps);
-      if (st !== lastSt) {   // glow colour and strength: only a few times per dissolve
+      if (st !== lastSt && CONFIG.haloFollowsImage) {   // glow colour and strength: only a few times per dissolve
         lastSt = st; const q = st / steps, kq = from.k + (to.k - from.k) * q;
         if (a.length === 3 && b.length === 3) root.style.setProperty('--ambilight-rgb', a.map((v, i) => Math.round(v + (b[i] - v) * q)).join(', '));
         root.style.setProperty('--halo-k', kq.toFixed(3));
