@@ -215,6 +215,11 @@
   }
   html.lights-off::view-transition-new(room) { animation: darkSettle 1.9s cubic-bezier(.4, 0, .3, 1) both; }
   @keyframes darkSettle { 0% { filter: brightness(.7) blur(.7px); } 100% { filter: brightness(1) blur(0); } }
+  /* An item is selected: the room is hidden, so the page background itself is the lamp. The stage joins the root layer, and the root follows the same slow light curves as the room does at home. */
+  html.sec .stage { view-transition-name: none; }
+  html.lights-on.sec::view-transition-new(root) { z-index: 2; animation: lightsOn 1.8s cubic-bezier(.4, 0, .2, 1) both; }
+  html.lights-off.sec::view-transition-old(root) { z-index: 2; animation: lightsOff 1.9s cubic-bezier(.4, 0, .3, 1) both; }
+  html.lights-off.sec::view-transition-new(root) { animation: darkSettle 1.9s cubic-bezier(.4, 0, .3, 1) both; }
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
     transition: background-color 1.8s ease, color 1.8s ease, box-shadow 1.8s ease, opacity 1.8s ease, text-shadow 1.8s ease !important; }   /* fallback when the browser has no view transitions */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32;
@@ -678,9 +683,10 @@ async function switchTheme(pref) {
   themeBtn.classList.remove('wait');
   if (reduceQ.matches) apply();
   else if (document.startViewTransition) {
+    root.classList.toggle('sec', homeEl.classList.contains('section-mode'));   // an item is selected: the background carries the lamp
     root.classList.add(next ? 'lights-on' : 'lights-off');
     try { await document.startViewTransition(apply).finished; } catch (e) {}
-    root.classList.remove('lights-on', 'lights-off');
+    root.classList.remove('lights-on', 'lights-off', 'sec');
   } else { root.classList.add('theme-fade'); apply(); await new Promise(r => setTimeout(r, 1900)); root.classList.remove('theme-fade'); }
   themeBusy = false; footLock = false; scheduleLayout();
 }
