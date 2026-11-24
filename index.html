@@ -258,10 +258,6 @@
   #loader.done { opacity: 0; visibility: hidden; pointer-events: none; }
   #loader.done .ld { opacity: 0; }
   @media (prefers-reduced-motion: reduce) { #loader span { animation: none; } }
-  /* ===== Device rotation: the scene dissolves out, is rebuilt while hidden, and dissolves back in ===== */
-  html.rot .stage { opacity: .004; transition: opacity .3s ease; }
-  html.rot .site-header, html.rot .site-footer { opacity: 0; transition: opacity .3s ease; }
-  html.rot-in .stage, html.rot-in .site-header, html.rot-in .site-footer { transition: opacity .85s cubic-bezier(.4, 0, .2, 1); }
 </style>
 </head>
 <body>
@@ -553,7 +549,7 @@ function updateReflection(sr, ir, src = cv) {
 
 /* ===== State ===== */
 let dz = null;   // the dissolve in flight, or null: while it runs, every repaint (resize, lights switch) redraws the CURRENT blend instead of the starting picture
-let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0, slideResumeAt = 0, rotating = false, rotTimer = 0, lastPortrait = innerHeight > innerWidth;
+let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0, slideResumeAt = 0;
 const slideList = []; let slideIdx = 0;          // the slideshow: [{ im, rgb, k }], shared by both modes
 const curInfo = () => slideList[slideIdx] || {};
 const skirtOp = k => SKIRT_OPACITY * (isLight ? 1 : .2 + .8 * k);
@@ -668,25 +664,7 @@ function showMode() {     // puts the active mode's picture on screen
 }
 let layoutRaf = 0;
 function layoutAll() { nameMeasure(true); layoutImage(); menuMeasure(true); menuDraw(mP); }
-function scheduleLayout() { if (rotating) return; if (!layoutRaf) layoutRaf = requestAnimationFrame(() => { layoutRaf = 0; layoutAll(); }); }
-
-/* ===== Rotation: no half-resized frames. The scene (and the header and footer) dissolve out, everything is measured and rebuilt once the size has settled, then it all dissolves back in ===== */
-function rotBegin() {
-  const r = document.documentElement;
-  if (!rotating) { rotating = true; r.classList.remove('rot-in'); r.classList.add('rot'); }
-  cancelAnimationFrame(layoutRaf); layoutRaf = 0;
-  clearTimeout(rotTimer); rotTimer = setTimeout(rotFinish, 360);   // restarted by every resize event: it runs only when the size has stopped changing
-}
-function rotFinish() {
-  const r = document.documentElement;
-  layoutAll(); lastPortrait = innerHeight > innerWidth;
-  if (slideList.length > 1 && !reduceQ.matches) buildFX();           // the floors of every picture, for the new shape, while nothing is visible
-  requestAnimationFrame(() => requestAnimationFrame(() => {          // two frames: the new layout is painted before the dissolve in starts
-    r.classList.add('rot-in'); r.classList.remove('rot'); rotating = false;
-    setTimeout(() => r.classList.remove('rot-in'), 1000);
-  }));
-}
-function onViewportChange() { if (rotating || (innerHeight > innerWidth) !== lastPortrait) rotBegin(); else scheduleLayout(); }   // only a change of orientation gets the dissolve; other resizes stay live
+function scheduleLayout() { if (!layoutRaf) layoutRaf = requestAnimationFrame(() => { layoutRaf = 0; layoutAll(); }); }
 
 /* ===== Theme switch: a light being turned on or off ===== */
 let themeBusy = false;
@@ -1018,7 +996,7 @@ function reveal() {
   setTimeout(() => loaderEl.remove(), 1600);
   let first = true;
   if ('ResizeObserver' in window) new ResizeObserver(() => { if (first) first = false; else scheduleLayout(); }).observe(homeEl);
-  addEventListener('resize', onViewportChange); addEventListener('orientationchange', rotBegin);
+  addEventListener('resize', scheduleLayout);
   setTimeout(loadRoomPhoto, 500);   // the room photo, quietly, once the page is up
 }
 /* ===== Slideshow: the pictures dissolve into each other. Everything on the floor (reflection, skirt, halo) is rebuilt from the same blended frame ===== */
@@ -1063,7 +1041,6 @@ function buildFX() {   // every picture's floor, once, from its thumbnail: the v
   if (!W || !slideList.length) return;
   const sr = homeEl.getBoundingClientRect(), ir = imgBox(); fxSnap = [];
   for (const sl of slideList) { updateReflection(sr, ir, sl.thumb); fxSnap.push({ r: copyCanvas(reflCanvas), k: copyCanvas(skirtCanvas) }); }
-  if (dz) { dz.fA = fxSnap[slideList.indexOf(dz.from)]; dz.fB = fxSnap[slideList.indexOf(dz.to)]; }   // a dissolve in flight continues on the new floors
   fxKeyAt = fxKey(); fxRestore();
 }
 function refreshSkirts() {   // lights switched: only the skirt depends on them (dark floors follow the picture's brightness), so only it is rebuilt
@@ -1093,8 +1070,8 @@ function drawDz() {   // one frame of the dissolve in flight: A, then B coming i
   if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity * ((SL.modeStrength && SL.modeStrength[d.mode]) ?? 1)); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1; }
 }
 function slideNext() {
-  if (slideBusy || !homeVisible || document.hidden || themeBusy || rotating || performance.now() < slideResumeAt || home.classList.contains('section-mode')) {
-    if (!homeVisible && !dz && !rotating && slideList.length > 1 && fxKeyAt !== fxKey()) buildFX();   // turned the device while a section was open: the floors are rebuilt there, never on the way back
+  if (slideBusy || !homeVisible || document.hidden || themeBusy || performance.now() < slideResumeAt || home.classList.contains('section-mode')) {
+    if (!homeVisible && !dz && slideList.length > 1 && fxKeyAt !== fxKey()) buildFX();   // turned the device while a section was open: the floors are rebuilt there, never on the way back
     clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
   const SL = CONFIG.slides, P = slideRoll(), n = slideList.length, from = slideList[slideIdx];
   let toIdx = (slideIdx + 1) % n; if (P.order === 'shuffle' && n > 2) do { toIdx = Math.floor(Math.random() * n); } while (toIdx === slideIdx);
