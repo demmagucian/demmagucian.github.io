@@ -141,10 +141,24 @@ function build() {
   cv.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('resize', () => { if (!panel.hidden) size(); });
 }
+const STUDIO = { dir: 'studio/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'] };   // change the folder or names here
+let loading = false;
+function load() {
+  if (loading) return; loading = true;
+  Promise.all(STUDIO.files.map(f => new Promise(res => {
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); c.naturalWidth = c.width; c.naturalHeight = c.height; res({ im: c });
+    };
+    im.onerror = () => res(null);
+    im.src = STUDIO.dir + f + '?v=' + (typeof CONFIG !== 'undefined' ? CONFIG.v : 1);
+  }))).then(a => { srcs = a.filter(Boolean); if (!panel.hidden) activate(true); });
+}
 function activate(on) {
   cancelAnimationFrame(raf); run = false; if (!on) return;
-  if (!srcs.length && typeof slideList !== 'undefined') srcs = slideList.slice();
-  if (!srcs.length) return;
+  if (!srcs.length) { load(); return; }
   if (!built) build();
   run = true; last = performance.now(); raf = requestAnimationFrame(frame);
 }
