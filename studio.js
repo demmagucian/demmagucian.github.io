@@ -117,9 +117,9 @@ const CSS = `#processPanel:not([hidden]){display:block!important;height:100%;min
 .st p{margin:0;align-self:stretch}
 .st canvas{display:block;aspect-ratio:var(--ar,.75);width:min(100%,calc(min(56vh,520px)*var(--ar,.75)));height:auto;touch-action:none;cursor:pointer;box-shadow:var(--img-halo)}
 .st button{all:unset;cursor:pointer;color:var(--ink);text-shadow:var(--txt-glow);padding:6px 0}.st button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}`;
+document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CSS }));
 function build() {
   built = true; V = vary();
-  const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   panel.innerHTML = '<div class="st"><p>Move over the image to disturb it. Tap to lock an area of similar color; tap it again to let it go. Press generate for a new variation.</p><canvas id="stC" role="img" aria-label="Artwork"></canvas><button id="stGen" type="button">generate</button></div>';
   cv = $('#stC'); ctx = cv.getContext('2d');
   const im = srcs[0].im; cv.style.setProperty('--ar', im.naturalWidth / im.naturalHeight);
@@ -141,6 +141,14 @@ function build() {
   cv.addEventListener('contextmenu', e => e.preventDefault());
   addEventListener('resize', () => { if (!panel.hidden) size(); });
 }
+const DBG = new URLSearchParams(location.search).has('debug');
+function note(msg) {   // add ?debug to the address to see this on screen
+  if (!DBG) return;
+  let el = document.getElementById('dbg');
+  if (!el) { el = document.createElement('pre'); el.id = 'dbg'; el.style.cssText = 'position:fixed;z-index:200;left:8px;right:8px;bottom:56px;margin:0;padding:8px;font:11px/1.35 monospace;color:#7CFC9A;background:rgba(0,0,0,.8);white-space:pre-wrap;pointer-events:none'; document.body.appendChild(el); }
+  el.textContent += msg + '\n';
+}
+addEventListener('error', e => note('studio error: ' + e.message));
 const STUDIO = { dir: 'studio/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'] };   // change the folder or names here
 let loading = false;
 function load() {
@@ -150,11 +158,15 @@ function load() {
     im.onload = () => {
       const k = Math.min(1, 2048 / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas');
       c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k);
-      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); c.naturalWidth = c.width; c.naturalHeight = c.height; res({ im: c });
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); c.naturalWidth = c.width; c.naturalHeight = c.height; note('studio ' + im.src + ': ok ' + im.naturalWidth + 'x' + im.naturalHeight); res({ im: c });
     };
-    im.onerror = () => res(null);
+    im.onerror = () => { note('studio ' + im.src + ': FAILED (missing file or wrong name?)'); res(null); };
     im.src = STUDIO.dir + f + '?v=' + (typeof CONFIG !== 'undefined' ? CONFIG.v : 1);
-  }))).then(a => { srcs = a.filter(Boolean); if (!panel.hidden) activate(true); });
+  }))).then(a => {
+    srcs = a.filter(Boolean);
+    if (!srcs.length) { panel.innerHTML = '<div class="st"><p>Studio images not found. Expected ' + STUDIO.dir + STUDIO.files[0] + ' to ' + STUDIO.files[STUDIO.files.length - 1] + ' next to index.html.</p></div>'; return; }
+    if (!panel.hidden) activate(true);
+  });
 }
 function activate(on) {
   cancelAnimationFrame(raf); run = false; if (!on) return;
