@@ -116,7 +116,8 @@ const CSS = `#processPanel:not([hidden]){display:block!important;height:100%;min
 .st{max-width:520px;margin:0 auto;padding:var(--m) var(--m) calc(var(--m)*2);display:flex;flex-direction:column;align-items:center;gap:calc(var(--m)*1.1);font-size:var(--site-type);letter-spacing:-.025em;font-weight:500;line-height:1.35;text-shadow:var(--txt-glow)}
 .st p{margin:0;align-self:stretch}
 .st canvas{display:block;aspect-ratio:var(--ar,.75);width:min(100%,calc(min(56vh,520px)*var(--ar,.75)));height:auto;touch-action:none;cursor:pointer;box-shadow:var(--img-halo)}
-.st button{all:unset;cursor:pointer;color:var(--ink);text-shadow:var(--txt-glow);padding:6px 0}.st button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}`;
+.st button{all:unset;cursor:pointer;color:var(--ink);text-shadow:var(--txt-glow);padding:6px 0}.st button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.stl{height:100%;display:flex;align-items:center;justify-content:center;font-size:var(--site-type);letter-spacing:-.025em;font-weight:500;text-shadow:var(--txt-glow);animation:breathe 3.733s cubic-bezier(.37,0,.63,1) infinite}`;
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CSS }));
 function build() {
   built = true; V = vary();
@@ -153,6 +154,7 @@ const STUDIO = { dir: 'studio/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.
 let loading = false;
 function load() {
   if (loading) return; loading = true;
+  panel.innerHTML = '<div class="stl">launching…</div>';   // shown from the click until the images are ready
   Promise.all(STUDIO.files.map(f => new Promise(res => {
     const im = new Image();
     im.onload = () => {
