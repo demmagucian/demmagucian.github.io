@@ -39,14 +39,14 @@
     font-family: "Helvetica Neue", Helvetica, "Arimo", Arial, sans-serif;   /* Apple devices use Helvetica Neue; Android has neither, so it gets Arimo (same shapes and widths as Helvetica/Arial) */
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   .stage { position: fixed; z-index: 1; inset: 0; display: flex; align-items: center; justify-content: center;
-    background: #000; touch-action: none; overscroll-behavior: none; transition: opacity 1.25s cubic-bezier(.4, 0, .2, 1); }   /* coming back home: a long, even dissolve */
+    background: #000; touch-action: none; overscroll-behavior: none; transition: opacity .9s ease; }
   canvas { display: block; height: auto; background: transparent; touch-action: none; outline: none;
     box-shadow: none; }
   .stage canvas.reflection { position: absolute; z-index: 0; left: 0; top: 0; width: 0; height: 0; display: none;
     pointer-events: none; opacity: 1; image-rendering: auto; will-change: contents; }   /* mirrored glow on the "floor" below the image (also used by the skirt) */
   /* Floor layers: skirt and reflection are blended with what is behind them. Dark floor: they ADD light (screen). Light floor: they tint it (multiply). */
   .fgrp { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen; }
-  .fgrp.refl-g { opacity: .72; }   /* reflection body: 20% less luminous than before (.9 x .8) */
+  .fgrp.refl-g { opacity: .9; }
   /* Dark room: only light shapes it. A wall washed by the artwork's own colour (falls off into black), a faint warm light from above, and a floor with a soft horizon. Dark mode only. */
   .room { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
   .room::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--room-h, 70%);
@@ -158,7 +158,7 @@
     stroke-linecap: round; stroke-linejoin: round; opacity: var(--ico-op); }
   .social-links .x-mark { width: 10px; height: 10px; fill: currentColor; stroke: none; }   /* the X glyph fills its whole box, the other icons only ~75-80%: 10px makes it read the same size */
   .stage { overflow: hidden; }
-  .stage.section-mode { opacity: .004; pointer-events: none; transition-duration: .9s; transition-timing-function: ease; }   /* .004, not 0: invisible, but the browser keeps the layers painted, so nothing has to be rebuilt in the first frame of the way back */   /* an item is selected: the home image, reflection and glow fade out to black; they fade back in with "home" */
+  .stage.section-mode { opacity: 0; pointer-events: none; }   /* an item is selected: the home image, reflection and glow fade out to black; they fade back in with "home" */
   .content-frame { position: fixed; z-index: 2; top: var(--header-h); left: 0; right: 0;
     bottom: var(--footer-h); display: none; overflow: hidden;
     background: transparent; }   /* transparent on purpose: a black frame fading in over the fading image made the band between header and footer fade twice as fast as the strip under the header (the stripe). The stage alone now drives one even fade. */
@@ -215,11 +215,6 @@
   }
   html.lights-off::view-transition-new(room) { animation: darkSettle 1.9s cubic-bezier(.4, 0, .3, 1) both; }
   @keyframes darkSettle { 0% { filter: brightness(.7) blur(.7px); } 100% { filter: brightness(1) blur(0); } }
-  /* An item is selected: the room is hidden, so the page background itself is the lamp. The stage joins the root layer, and the root follows the same slow light curves as the room does at home. */
-  html.sec .stage { view-transition-name: none; }
-  html.lights-on.sec::view-transition-new(root) { z-index: 2; animation: lightsOn 1.8s cubic-bezier(.4, 0, .2, 1) both; }
-  html.lights-off.sec::view-transition-old(root) { z-index: 2; animation: lightsOff 1.9s cubic-bezier(.4, 0, .3, 1) both; }
-  html.lights-off.sec::view-transition-new(root) { animation: darkSettle 1.9s cubic-bezier(.4, 0, .3, 1) both; }
   html.theme-fade, html.theme-fade body, html.theme-fade .stage, html.theme-fade #c, html.theme-fade .site-header *, html.theme-fade .site-footer * {
     transition: background-color 1.8s ease, color 1.8s ease, box-shadow 1.8s ease, opacity 1.8s ease, text-shadow 1.8s ease !important; }   /* fallback when the browser has no view transitions */
   html[data-theme="light"] { color-scheme: light; --ink: #2b2620; --ink-rgb: 43, 38, 32;
@@ -231,7 +226,7 @@
   html[data-theme="light"], html[data-theme="light"] body, html[data-theme="light"] .stage { background: #e4dfd8; }   /* the sections fade to the wall tone instead of black */
   html[data-theme="light"] #c { background: transparent; }
   html[data-theme="light"] .fgrp { mix-blend-mode: normal; }   /* plain alpha instead of multiply: looks the same in every browser (Safari rendered multiply as a pale fog) */
-  html[data-theme="light"] .fgrp.refl-g { opacity: .72; }
+  html[data-theme="light"] .fgrp.refl-g { opacity: .9; }
   html[data-theme="light"] .fgrp.skirt-g { opacity: .35; }
   html[data-theme="light"] .contact { background: linear-gradient(to bottom, rgba(34, 27, 21, .22) 0%, rgba(34, 27, 21, .12) 18%, rgba(34, 27, 21, .04) 48%, rgba(34, 27, 21, 0) 100%); }
 
@@ -316,10 +311,10 @@
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
   slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'],   // ONE set of pictures for both modes, in the folder next to index.html (same proportions)
-            fade: 4444, hold: 555, fps: 60, order: 'random', style: 'blend', blendMode: 'multiply', blendAmount: .7, blendIntensity: .5,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
+            fade: 5000, hold: 0, fps: 60, order: 'sequence', style: 'blend', blendMode: 'multiply', blendAmount: .7, blendIntensity: .5,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
             // As in the autoloop, a NEW random value is drawn for each of these at the start of every dissolve. [min, max] = a number between the two, [..., ...] of words = one random pick. Delete a line to keep that value fixed; random: null = no randomness at all
             random: { hold: [0, 1515], order: ['sequence', 'shuffle'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-dodge', 'color-burn', 'luminosity'], blendAmount: [.4, 1] },
-            modeStrength: { 'color-dodge': .35, 'color-burn': .35, 'hard-light': .35,'screen': .35 } },   // extra strength per blend mode, on top of blendIntensity (1 = as is, .5 = half). Modes not listed use 1
+            modeStrength: { 'color-dodge': .5, 'color-burn': .5, 'hard-light': .5 } },   // extra strength per blend mode, on top of blendIntensity (1 = as is, .5 = half). Modes not listed use 1
   haloFollowsImage: false,                                              // false = the glow around the artwork keeps one fixed colour and strength (much less repainting, smoother in dark mode). true = it follows the colour and brightness of each picture
   haloColor: '200, 190, 175',                                           // fixed glow colour (R, G, B) when haloFollowsImage is false
   haloStrength: .5,                                                     // fixed glow strength, 0 to 1, when haloFollowsImage is false
@@ -339,7 +334,7 @@ const REFL_ROOM_P = .14;     // portrait: same, shorter because the portrait ref
 const LAND_SCALE = 1.25;     // landscape: the image is 25% bigger than the plain fit ...
 const LAND_SHRINK = .935;    // landscape: then scaled to 93.5% (= 15% smaller, then 10% bigger)
 const REFL_ROOM_MIN = .03;   // ... but always keeps at least this share of its height free under it (a sliver of reflection), so it never leaves the screen
-const IMG_ZOOM = .75;         // whole home image (and its room, reflection, halo) scaled to 80% of the fitted size, kept on the same centre: 1 = no change
+const IMG_ZOOM = .8;         // whole home image (and its room, reflection, halo) scaled to 80% of the fitted size, kept on the same centre: 1 = no change
 const SIDE_P = 3;            // portrait: the lateral space beside the image is this many times the landscape one
 const HALO_FULL_LUM = .30;   // overall image brightness at which the halo reaches its full (50%) strength
 const reflCanvas = document.getElementById('reflection'), reflCtx = reflCanvas.getContext('2d', { willReadFrequently: true });
@@ -489,7 +484,7 @@ function buildReflMask(rw, rh, padT) {
 }
 function updateReflection(sr, ir, src = cv) {
   const h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));   // vertical stage: brief reflection (and, through h, a brief skirt); whole pixels, like the image
-  if (ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; contactEl.style.display = 'none'; return; }   // hidden in the sections
+  if (!homeVisible || ir.width < 8 || h < 8) { reflCanvas.style.display = 'none'; skirtCanvas.style.display = 'none'; contactEl.style.display = 'none'; return; }   // hidden in the sections
   const padPx = Math.round(ir.width * REFL_PAD), W = ir.width + 2 * padPx;                       // whole-pixel box, symmetric around the image: no half-pixel edges that can shift against it
   const dpr = window.devicePixelRatio || 1, hide = -(REFL_SPACING > 0 ? Math.max(1, Math.round(REFL_SPACING * dpr)) / dpr : 0);   // negative = the reflection starts this many px BELOW the foot of the image   // was Math.ceil(W / REFL_W): the reflection was pushed up UNDER the image, so the image covered its first rows and the mirror was shifted; it now starts exactly at the foot of the image   // css px of the reflection's first (edge-blurred, faded) row: it is tucked under the image so no dark or light seam shows between them
   const rl = Math.round(ir.left - sr.left) - padPx, rt = Math.round(ir.bottom - sr.top) - hide;
@@ -554,7 +549,7 @@ function updateReflection(sr, ir, src = cv) {
 
 /* ===== State ===== */
 let dz = null;   // the dissolve in flight, or null: while it runs, every repaint (resize, lights switch) redraws the CURRENT blend instead of the starting picture
-let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0, slideResumeAt = 0;
+let aspect = 3 / 4, W = 0, H = 0, curImg = null, isLight = false, homeVisible = true, homeHideTimer = 0;
 const slideList = []; let slideIdx = 0;          // the slideshow: [{ im, rgb, k }], shared by both modes
 const curInfo = () => slideList[slideIdx] || {};
 const skirtOp = k => SKIRT_OPACITY * (isLight ? 1 : .2 + .8 * k);
@@ -683,10 +678,9 @@ async function switchTheme(pref) {
   themeBtn.classList.remove('wait');
   if (reduceQ.matches) apply();
   else if (document.startViewTransition) {
-    root.classList.toggle('sec', homeEl.classList.contains('section-mode'));   // an item is selected: the background carries the lamp
     root.classList.add(next ? 'lights-on' : 'lights-off');
     try { await document.startViewTransition(apply).finished; } catch (e) {}
-    root.classList.remove('lights-on', 'lights-off', 'sec');
+    root.classList.remove('lights-on', 'lights-off');
   } else { root.classList.add('theme-fade'); apply(); await new Promise(r => setTimeout(r, 1900)); root.classList.remove('theme-fade'); }
   themeBusy = false; footLock = false; scheduleLayout();
 }
@@ -812,8 +806,7 @@ function showSection(section) {
   const active = !!section;
   home.classList.toggle('section-mode', active);
   clearTimeout(homeHideTimer);
-  if (active) homeHideTimer = setTimeout(() => { homeVisible = false; }, 1000);   // only pauses the slideshow: the picture and the floor stay painted
-  else { homeVisible = true; slideResumeAt = performance.now() + 2400; }   // nothing is rebuilt on the way back, and the slideshow waits until the fade and the fold are over
+  if (active) homeHideTimer = setTimeout(() => { homeVisible = false; layoutFX(); }, 1000); else if (!homeVisible) { homeVisible = true; layoutFX(); }
   contentFrame.classList.toggle('open', active);
   document.getElementById('writingPanel').hidden = section !== 'writing';
   document.getElementById('processPanel').hidden = section !== 'process';
@@ -1076,9 +1069,7 @@ function drawDz() {   // one frame of the dissolve in flight: A, then B coming i
   if (d.cC) { ctx.globalAlpha = Math.min(1, d.amt * Math.sin(Math.PI * d.e) * Math.min(1, d.e / .08, (1 - d.e) / .08) * SL.blendIntensity * ((SL.modeStrength && SL.modeStrength[d.mode]) ?? 1)); ctx.drawImage(d.cC, 0, 0); ctx.globalAlpha = 1; }
 }
 function slideNext() {
-  if (slideBusy || !homeVisible || document.hidden || themeBusy || performance.now() < slideResumeAt || home.classList.contains('section-mode')) {
-    if (!homeVisible && !dz && slideList.length > 1 && fxKeyAt !== fxKey()) buildFX();   // turned the device while a section was open: the floors are rebuilt there, never on the way back
-    clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
+  if (slideBusy || !homeVisible || document.hidden || themeBusy) { clearTimeout(slideTimer); slideTimer = setTimeout(slideNext, 400); return; }   // not while a section is open, the tab is hidden or the lights are switching
   const SL = CONFIG.slides, P = slideRoll(), n = slideList.length, from = slideList[slideIdx];
   let toIdx = (slideIdx + 1) % n; if (P.order === 'shuffle' && n > 2) do { toIdx = Math.floor(Math.random() * n); } while (toIdx === slideIdx);
   const to = slideList[toIdx]; slideHold = P.hold;
@@ -1128,6 +1119,7 @@ async function boot() {
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));   // let the first full frame paint under the loading screen
   } catch (e) { console.error(e); dbg('boot failed: ' + e); }
   dbg(`theme ${isLight ? 'light' : 'dark'}, picture ${curImg ? 'ok' : 'MISSING'}, canvas ${cv.width}x${cv.height}`);
+  if (DEBUG && document.fonts) document.fonts.load('500 16px Arimo').then(f => dbg('Arimo: ' + (f.length && f[0].status === 'loaded' ? 'loaded' : 'NOT loaded'))).catch(e => dbg('Arimo: NOT loaded (' + e + ')'));
   reveal();
   slideSchedule();
 }
