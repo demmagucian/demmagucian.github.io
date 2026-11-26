@@ -159,22 +159,12 @@
   .social-links .x-mark { width: 10px; height: 10px; fill: currentColor; stroke: none; }   /* the X glyph fills its whole box, the other icons only ~75-80%: 10px makes it read the same size */
   .stage { overflow: hidden; }
   .stage.section-mode { opacity: .004; pointer-events: none; transition-duration: .9s; transition-timing-function: ease; }   /* .004, not 0: invisible, but the browser keeps the layers painted, so nothing has to be rebuilt in the first frame of the way back */   /* an item is selected: the home image, reflection and glow fade out to black; they fade back in with "home" */
-  /* The content frame stays in the page and fades with opacity, so every move (home -> item, item -> item, item -> home) dissolves. */
   .content-frame { position: fixed; z-index: 2; top: var(--header-h); left: 0; right: 0;
-    bottom: var(--footer-h); display: block; overflow: hidden;
-    opacity: 0; visibility: hidden; pointer-events: none;
-    transition: opacity 1.25s cubic-bezier(.4, 0, .2, 1), visibility 0s linear 1.25s;
-    background: transparent; }   /* transparent on purpose: the stage alone drives one even fade of the home image */
-  .content-frame.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .8s ease, visibility 0s; }
-  .content-frame.swap { transition: opacity .45s ease, visibility 0s linear .45s; }   /* item -> item: the old one fades out fast, then the new one fades in */
-  /* Header and footer bands while an item is open: two full-screen pictures, shown only in the top and bottom bands (same height: --footer-h = --header-h). The body between them stays plain black / wall tone. */
-  .bands { position: fixed; z-index: 1; inset: 0; pointer-events: none; opacity: 0; transition: opacity 1.25s cubic-bezier(.4, 0, .2, 1);
-    -webkit-mask-image: linear-gradient(to bottom, #000 var(--header-h), transparent var(--header-h), transparent calc(100% - var(--footer-h)), #000 calc(100% - var(--footer-h)));
-    mask-image: linear-gradient(to bottom, #000 var(--header-h), transparent var(--header-h), transparent calc(100% - var(--footer-h)), #000 calc(100% - var(--footer-h))); }
-  .stage.section-mode ~ .bands { opacity: 1; transition: opacity .9s ease; }
-  .bands i { position: absolute; inset: 0; background: center / cover no-repeat; opacity: 0; }
-  html[data-theme="dark"] .bands .bd, html[data-theme="light"] .bands .bl { opacity: 1; }
-  html.theme-fade .bands i { transition: opacity 1.8s ease; }
+    bottom: var(--footer-h); display: none; overflow: hidden;
+    background: transparent; }   /* transparent on purpose: a black frame fading in over the fading image made the band between header and footer fade twice as fast as the strip under the header (the stripe). The stage alone now drives one even fade. */
+  .content-frame.open { display: block; animation: sectionIn .8s ease both; }
+  @keyframes sectionIn { from { opacity: 0; } to { opacity: 1; } }
+  .content-frame iframe { display: none !important; }
   .section-placeholder { display: none !important; min-height: 100%; padding: 0; background: #000; color: transparent; }
   .section-placeholder h1 { display: none; }
   @media (max-width: 700px) {
@@ -279,7 +269,6 @@
 <div id="loader" role="status" aria-live="polite"><div class="ld"><span>loading…</span></div></div>
 
 <div class="stage" id="home"><canvas class="reflection" id="reflection" aria-hidden="true"></canvas><canvas id="c" role="img" aria-label="Artwork"></canvas></div>
-<div class="bands" aria-hidden="true"><i class="bd"></i><i class="bl"></i></div>
 
 <header class="site-header">
   <a class="site-name" href="#home" id="homeLink" aria-label="Demma Guciàn"><span class="nl">D<span class="nr">emma&nbsp;</span></span><span class="nl">G<span class="nr">uciàn</span></span></a>
@@ -819,26 +808,18 @@ const externalPage = document.getElementById('externalPage');
 const home = document.getElementById('home');
 const ARTWORKS_URL = 'https://verse.works/demma-gucian';
 let artworksLoaded = false;
-/* Every move dissolves: home -> item and item -> home fade the content frame (and the header/footer bands); item -> item fades out, swaps, fades in. */
-let curSec = null, secTimer = 0;
-function applyPanels(section) {
+function showSection(section) {
+  const active = !!section;
+  home.classList.toggle('section-mode', active);
+  clearTimeout(homeHideTimer);
+  if (active) homeHideTimer = setTimeout(() => { homeVisible = false; }, 1000);   // only pauses the slideshow: the picture and the floor stay painted
+  else { homeVisible = true; slideResumeAt = performance.now() + 2400; }   // nothing is rebuilt on the way back, and the slideshow waits until the fade and the fold are over
+  contentFrame.classList.toggle('open', active);
   document.getElementById('writingPanel').hidden = section !== 'writing';
   document.getElementById('processPanel').hidden = section !== 'process';
   document.getElementById('mePanel').hidden = section !== 'me';
   externalPage.style.display = section === 'portraits' ? 'block' : 'none';
   if (section === 'portraits' && !artworksLoaded) { externalPage.src = ARTWORKS_URL; artworksLoaded = true; }
-}
-function showSection(section) {
-  const prev = curSec, active = !!section; curSec = section || null;
-  home.classList.toggle('section-mode', active);
-  clearTimeout(homeHideTimer); clearTimeout(secTimer);
-  if (active) homeHideTimer = setTimeout(() => { homeVisible = false; }, 1000);   // only pauses the slideshow: the picture and the floor stay painted
-  else { homeVisible = true; slideResumeAt = performance.now() + 2400; }   // nothing is rebuilt on the way back, and the slideshow waits until the fade and the fold are over
-  if (active && prev && prev !== section) {   // item to item: the old one fades out, then the new one fades in
-    contentFrame.classList.add('swap'); contentFrame.classList.remove('open');
-    secTimer = setTimeout(() => { applyPanels(section); contentFrame.classList.remove('swap'); contentFrame.classList.add('open'); }, 480);
-  } else if (active) { applyPanels(section); contentFrame.classList.remove('swap'); contentFrame.classList.add('open'); }
-  else { contentFrame.classList.remove('swap', 'open'); secTimer = setTimeout(() => applyPanels(null), 1300); }   // back home: the panel stays until the fade is over
   document.querySelectorAll('.main-nav a').forEach(a => {
     const selected = a.id === (section ? section + 'Link' : '');
     if (selected) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
@@ -1132,13 +1113,6 @@ function slideNext() {
   };
   requestAnimationFrame(tick);
 }
-/* The two header/footer pictures for the item sections: decoded before the loading screen leaves, so they never pop in */
-function loadBands() {
-  return Promise.all([['itemdarkback.jpg', 'bd'], ['itemlightback.jpg', 'bl']].map(([f, c]) => new Promise(res => {
-    const im = new Image(), u = `${f}?v=${CONFIG.v}`, ok = () => { document.querySelector('.bands .' + c).style.backgroundImage = `url("${u}")`; res(); };
-    im.onload = () => (im.decode ? im.decode().then(ok, ok) : ok()); im.onerror = () => res(); im.src = u;
-  })));
-}
 async function boot() {
   requestAnimationFrame(pulseTick);
   try {
@@ -1146,7 +1120,7 @@ async function boot() {
     document.documentElement.style.setProperty('--floor-light', CONFIG.darkFloorLight); document.documentElement.style.setProperty('--floor-blur', CONFIG.darkFloorBlur + 'px'); document.documentElement.style.setProperty('--floor-contrast', CONFIG.darkFloorContrast);
     roomPhotoEl.style.visibility = 'hidden'; floorPhotoEl.style.visibility = 'hidden';
     applyTheme();
-    await Promise.all([wait(loadSlides(), 90000), wait(loadRoomPhoto(), 8000), wait(document.fonts ? document.fonts.ready : null, 3000), wait(loadBands(), 8000)]);
+    await Promise.all([wait(loadSlides(), 90000), wait(loadRoomPhoto(), 8000), wait(document.fonts ? document.fonts.ready : null, 3000)]);
     nameCap = 1; menuMeasure(true); setNameOpen(1); menuDraw(0);
     showMode();
     menuMeasure(true); menuDraw(0);          // the image box is known now: row or column?
@@ -1159,6 +1133,5 @@ async function boot() {
 }
 boot();
 </script>
-<script src="studio.js"></script>
 </body>
 </html>
