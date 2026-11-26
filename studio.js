@@ -117,7 +117,8 @@ const CSS = `#processPanel:not([hidden]){display:block!important;height:100%;min
 .st p{margin:0;align-self:stretch}
 .st canvas{display:block;aspect-ratio:var(--ar,.75);width:min(100%,calc(min(56vh,520px)*var(--ar,.75)));height:auto;touch-action:none;cursor:pointer;box-shadow:var(--img-halo)}
 .st button{all:unset;cursor:pointer;color:var(--ink);text-shadow:var(--txt-glow);padding:6px 0}.st button:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
-.stl{height:100%;display:flex;align-items:center;justify-content:center;font-size:var(--site-type);letter-spacing:-.025em;font-weight:500;text-shadow:var(--txt-glow);animation:breathe 3.733s cubic-bezier(.37,0,.63,1) infinite}`;
+.stl{height:100%;display:flex;align-items:center;justify-content:center;font-size:var(--site-type);letter-spacing:-.025em;font-weight:500;text-shadow:var(--txt-glow);animation:breathe 3.733s cubic-bezier(.37,0,.63,1) infinite}
+.st{animation:stIn .9s ease both}@keyframes stIn{from{opacity:0}to{opacity:1}}`;
 document.head.appendChild(Object.assign(document.createElement('style'), { textContent: CSS }));
 function build() {
   built = true; V = vary();
