@@ -312,7 +312,7 @@
 const CONFIG = {
   theme: 'auto',                                                        // 'auto' follows the device; 'light' or 'dark' forces one (keep the same value in the small script in <head>)
   slides: { dir: 'slides/', files: ['1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg'],   // ONE set of pictures for both modes, in the folder next to index.html (same proportions)
-            fade: 3333, hold: 666, fps: 60, order: 'random', style: 'blend', blendMode: 'multiply', blendAmount: .8, blendIntensity: .65,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
+            fade: 2222, hold: 333, fps: 60, order: 'random', style: 'blend', blendMode: 'multiply', blendAmount: .8, blendIntensity: .65,   // the fixed values: ms for one dissolve, pause between dissolves (0 = continuous), then the look; style 'crossfade' = plain, blendIntensity: overall strength of the blend wash (0 = none)
             // As in the autoloop, a NEW random value is drawn for each of these at the start of every dissolve. [min, max] = a number between the two, [..., ...] of words = one random pick. Delete a line to keep that value fixed; random: null = no randomness at all
             random: { hold: [0, 1515], order: ['random', 'shuffle'], blendMode: ['multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-dodge', 'color-burn', 'luminosity'], blendAmount: [.4, 1] },
             modeStrength: { 'color-dodge': .5, 'color-burn': .5, 'hard-light': .35, 'screen': .35 } },   // extra strength per blend mode, on top of blendIntensity (1 = as is, .5 = half). Modes not listed use 1
