@@ -274,6 +274,11 @@ const reflMid = mk(), reflMidCtx = reflMid.getContext('2d');
 const REFL_W = 320, REFL_HEIGHT = .6, REFL_HEIGHT_P = .60, REFL_SPACING = 0, REFL_GAP = 0, REFL_PAD = .06;
 const reflSmall = mk();
 const reflLv = Array.from({ length: 6 }, mk), REFL_KX = [.5, .55, .6, .62, .65], REFL_KY = [.35, .45, .5, .55, .6];
+/* LIGHT MODE ONLY: a calmer, more solid reflection (dark mode keeps the values above and below) */
+const REFL_KY_L = [.5, .55, .6, .62, .65];   // blur is the same sideways and downwards (dark: smears more downwards). Closer to the dark values = more streaky
+const RIPPLE_L = .25;                         // sideways ripple of the mirrored rows, 0 = none, 1 = as dark mode
+const TEX_L = [.03, .15];                     // holes in the reflection: strength at the top and at the bottom (dark: .12 and .45). 0, 0 = fully solid
+const FALL_L = .5, END_L = 3;                 // fade speed (dark: 1.35) and where the final fade-out starts (dark: 2). Lower FALL = fuller body
 function reflBlurXY(dst, src, w, h, kx, ky) {
   const sw = Math.max(2, Math.round(w * kx)), sh = Math.max(2, Math.round(h * ky));
   if (reflSmall.width !== sw || reflSmall.height !== sh) { reflSmall.width = sw; reflSmall.height = sh; }
@@ -388,15 +393,15 @@ function buildReflMask(rw, rh, padT) {
   const c = reflMask.getContext('2d'), id = c.createImageData(rw, rh), d = id.data, iw = rw - 2 * padT;
   for (let y = 0; y < rh; y++) {
     const t = y / rh, f = Math.max(1.2, iw * (.008 + .3 * t * t));
-    const sh = reflN(y * 2) * rw * (.0015 + .005 * t), xa = padT + sh, xb = rw - padT + sh;
+    const sh = reflN(y * 2) * rw * (.0015 + .005 * t) * (isLight ? RIPPLE_L : 1), xa = padT + sh, xb = rw - padT + sh;
     for (let x = 0; x < rw; x++) {
       const u = Math.min(1, Math.max(0, Math.min(x + .5 - xa, xb - x - .5) / f + .5));
-      const v = .45 * vnoise(x * .03, y * .45) + .25 * vnoise(x * .08, y * .16) + .3 * vnoise(x * .45, y * .9), tex = 1 - (.12 + .45 * t) * (1 - v) * 1.6;
+      const v = .45 * vnoise(x * .03, y * .45) + .25 * vnoise(x * .08, y * .16) + .3 * vnoise(x * .45, y * .9), tex = 1 - (isLight ? TEX_L[0] + TEX_L[1] * t : .12 + .45 * t) * (1 - v) * 1.6;
       d[(y * rw + x) * 4 + 3] = u * u * (3 - 2 * u) * Math.max(0, Math.min(1, tex)) * 255;
     }
   }
   c.putImageData(id, 0, 0);
-  reflMaskKey = rw + 'x' + rh + 'x' + padT;
+  reflMaskKey = rw + 'x' + rh + 'x' + padT + (isLight ? 'L' : 'D');
 }
 function updateReflection(sr, ir, src = cv) {
   const h = Math.round(ir.height * (sr.height > sr.width ? REFL_HEIGHT_P : REFL_HEIGHT));
@@ -431,12 +436,12 @@ function updateReflection(sr, ir, src = cv) {
   dcx.clearRect(0, 0, mw, mh);
   for (let y = 0; y < mh; y += 2) {
     const t = y / mh, fine = (vnoise(y * .8, 5.3) - .5) * 1.6 * (.25 + t);
-    dcx.drawImage(reflMid, 0, y, mw, 2, reflN(y) * mw * (.0015 + .005 * t) + fine, y, mw, 2);
+    dcx.drawImage(reflMid, 0, y, mw, 2, (reflN(y) * mw * (.0015 + .005 * t) + fine) * (isLight ? RIPPLE_L : 1), y, mw, 2);
   }
   const lv = reflLv, ltop = lv.length - 1;
   if (lv[0].width !== rw || lv[0].height !== rh) { lv[0].width = rw; lv[0].height = rh; }
   const l0 = lv[0].getContext('2d'); l0.imageSmoothingQuality = 'high'; l0.clearRect(0, 0, rw, rh); l0.drawImage(reflDist, 0, 0, rw, rh);
-  for (let i = 1; i <= ltop; i++) reflBlurXY(lv[i], lv[i - 1], rw, rh, REFL_KX[i - 1], REFL_KY[i - 1]);
+  for (let i = 1; i <= ltop; i++) reflBlurXY(lv[i], lv[i - 1], rw, rh, REFL_KX[i - 1], (isLight ? REFL_KY_L : REFL_KY)[i - 1]);
   reflCtx.globalCompositeOperation = 'source-over';
   reflCtx.clearRect(0, 0, rw, rh);
   for (let y = 0; y < rh; y += 2) {
@@ -447,9 +452,9 @@ function updateReflection(sr, ir, src = cv) {
   reflCtx.globalAlpha = 1;
   reflCtx.globalCompositeOperation = 'destination-in';
   let g = reflCtx.createLinearGradient(0, 0, 0, rh);
-  for (let k = 0; k <= 16; k++) { const tt = k / 16; g.addColorStop(tt, `rgba(0,0,0,${(1.0 * Math.exp(-(isLight ? 1.0 : 1.35) * tt) * (1 - tt * tt)).toFixed(3)})`); }
+  for (let k = 0; k <= 16; k++) { const tt = k / 16; g.addColorStop(tt, `rgba(0,0,0,${(Math.exp(-(isLight ? FALL_L : 1.35) * tt) * (1 - Math.pow(tt, isLight ? END_L : 2))).toFixed(3)})`); }
   reflCtx.fillStyle = g; reflCtx.fillRect(0, 0, rw, rh);
-  if (reflMaskKey !== rw + 'x' + rh + 'x' + padT) buildReflMask(rw, rh, padT);
+  if (reflMaskKey !== rw + 'x' + rh + 'x' + padT + (isLight ? 'L' : 'D')) buildReflMask(rw, rh, padT);
   reflCtx.drawImage(reflMask, 0, 0);
   reflCtx.globalCompositeOperation = 'source-over';
 }
