@@ -275,8 +275,9 @@ const REFL_W = 320, REFL_HEIGHT = .6, REFL_HEIGHT_P = .60, REFL_SPACING = 0, REF
 const reflSmall = mk();
 const reflLv = Array.from({ length: 6 }, mk), REFL_KX = [.5, .55, .6, .62, .65], REFL_KY = [.35, .45, .5, .55, .6];
 /* LIGHT MODE ONLY: a calmer, more solid reflection (dark mode keeps the values above and below) */
-const REFL_KY_L = [.5, .55, .6, .62, .65];   // blur is the same sideways and downwards (dark: smears more downwards). Closer to the dark values = more streaky
-const RIPPLE_L = .25;                         // sideways ripple of the mirrored rows, 0 = none, 1 = as dark mode
+const REFL_KY_L = [.42, .5, .55, .58, .62];   // downward blur (dark: .35 .45 .5 .55 .6). Lower = smears more downwards = more perspective
+const RIPPLE_L = .25;                         // sideways ripple INSIDE the reflection (the picture's rows), 0 = none, 1 = as dark mode
+const EDGE_L = 1;                             // ripple of the reflection's left and right limit lines: 1 = as dark mode (gives the floor its perspective), above 1 = even more chaotic
 const TEX_L = [.03, .15];                     // holes in the reflection: strength at the top and at the bottom (dark: .12 and .45). 0, 0 = fully solid
 const FALL_L = .5, END_L = 3;                 // fade speed (dark: 1.35) and where the final fade-out starts (dark: 2). Lower FALL = fuller body
 function reflBlurXY(dst, src, w, h, kx, ky) {
@@ -393,7 +394,7 @@ function buildReflMask(rw, rh, padT) {
   const c = reflMask.getContext('2d'), id = c.createImageData(rw, rh), d = id.data, iw = rw - 2 * padT;
   for (let y = 0; y < rh; y++) {
     const t = y / rh, f = Math.max(1.2, iw * (.008 + .3 * t * t));
-    const sh = reflN(y * 2) * rw * (.0015 + .005 * t) * (isLight ? RIPPLE_L : 1), xa = padT + sh, xb = rw - padT + sh;
+    const sh = reflN(y * 2) * rw * (.0015 + .005 * t) * (isLight ? EDGE_L : 1), xa = padT + sh, xb = rw - padT + sh;
     for (let x = 0; x < rw; x++) {
       const u = Math.min(1, Math.max(0, Math.min(x + .5 - xa, xb - x - .5) / f + .5));
       const v = .45 * vnoise(x * .03, y * .45) + .25 * vnoise(x * .08, y * .16) + .3 * vnoise(x * .45, y * .9), tex = 1 - (isLight ? TEX_L[0] + TEX_L[1] * t : .12 + .45 * t) * (1 - v) * 1.6;
